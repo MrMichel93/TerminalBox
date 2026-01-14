@@ -812,7 +812,8 @@
             
             // Generate filename with timestamp
             const now = new Date();
-            const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            // Remove milliseconds and 'Z' from ISO string: 2026-01-14T13:09:13.321Z -> 2026-01-14T13-09-13
+            const timestamp = now.toISOString().split('.')[0].replace(/:/g, '-');
             link.download = `terminal-session-${timestamp}.txt`;
             
             // Trigger download
