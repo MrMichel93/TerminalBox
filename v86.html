@@ -578,7 +578,7 @@
         function setOutput(text) {
             output.innerHTML = ansiToHtml(text);
             output.scrollTop = output.scrollHeight;
-            sessionOutput += text; // Store raw text for saving
+            sessionOutput = text; // Replace session output (not append)
         }
 
         function startTimer() {
@@ -799,7 +799,6 @@
 
         clearBtn.addEventListener('click', function() {
             setOutput('');
-            sessionOutput = ''; // Clear session output when display is cleared
         });
 
         saveOutputBtn.addEventListener('click', function() {
