@@ -315,6 +315,7 @@
 
     <div class="button-row">
         <button id="clear-btn" class="secondary-btn">Clear Output</button>
+        <button id="save-output-btn" class="secondary-btn">Save Output</button>
         <button id="restart-btn" class="secondary-btn danger-btn">Restart Linux</button>
         <button id="toggle-screen" class="toggle-screen">Show VGA Screen</button>
     </div>
@@ -387,6 +388,7 @@
         const cancelBtn = document.getElementById('cancel-btn');
         const timerEl = document.getElementById('timer');
         const clearBtn = document.getElementById('clear-btn');
+        const saveOutputBtn = document.getElementById('save-output-btn');
         const restartBtn = document.getElementById('restart-btn');
         const output = document.getElementById('output');
         const toggleScreenBtn = document.getElementById('toggle-screen');
@@ -406,6 +408,7 @@
         // Prompt ends with "% " - could be "~% ", "~/dir% ", "/path% ", etc.
         const promptPattern = /% $/;
         const maxOutputSize = 50000; // Truncate output after 50KB
+        let sessionOutput = ''; // Store complete terminal session for saving
 
         // Autocomplete state
         let selectedIndex = -1;
@@ -569,11 +572,13 @@
         function appendOutput(text) {
             output.innerHTML += ansiToHtml(text);
             output.scrollTop = output.scrollHeight;
+            sessionOutput += text; // Store raw text for saving
         }
 
         function setOutput(text) {
             output.innerHTML = ansiToHtml(text);
             output.scrollTop = output.scrollHeight;
+            sessionOutput += text; // Store raw text for saving
         }
 
         function startTimer() {
@@ -794,6 +799,30 @@
 
         clearBtn.addEventListener('click', function() {
             setOutput('');
+            sessionOutput = ''; // Clear session output when display is cleared
+        });
+
+        saveOutputBtn.addEventListener('click', function() {
+            // Create a blob with the session output
+            const blob = new Blob([sessionOutput], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            
+            // Create a temporary link and trigger download
+            const link = document.createElement('a');
+            link.href = url;
+            
+            // Generate filename with timestamp
+            const now = new Date();
+            const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            link.download = `terminal-session-${timestamp}.txt`;
+            
+            // Trigger download
+            document.body.appendChild(link);
+            link.click();
+            
+            // Clean up
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         });
 
         cancelBtn.addEventListener('click', cancelCommand);
