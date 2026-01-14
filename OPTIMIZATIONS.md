@@ -119,31 +119,43 @@ All optimizations use standard web platform features:
 
 ## Potential Future Optimizations
 
-### 1. Smaller Kernel Image
+### 1. Version Pinning
+- Current: Uses `@latest` for v86 library
+- Potential: Pin to specific version (e.g., `v86@1.2.3`)
+- Impact: More predictable behavior, better caching
+- Effort: Low (update URLs)
+
+### 2. Smaller Kernel Image
 - Current: 68MB Buildroot kernel
 - Potential: Custom minimal kernel (~20-30MB)
 - Impact: Could reduce load time by 50%+
 - Effort: High (requires custom kernel build)
 
-### 2. Service Worker Caching
+### 3. Progress Constants
+- Current: Hardcoded progress percentages (20%, 30%, 50%, 100%)
+- Potential: Define as named constants
+- Impact: Better code maintainability
+- Effort: Low
+
+### 4. Service Worker Caching
 - Cache WASM, BIOS, and kernel on first visit
 - Subsequent visits load instantly from cache
 - Impact: Near-instant load on repeat visits
 - Effort: Medium
 
-### 3. Compression Optimization
+### 5. Compression Optimization
 - Verify kernel image uses optimal compression (gzip/brotli)
 - Request format: Accept-Encoding: br, gzip
 - Impact: 10-20% smaller download size
 - Effort: Low (server-side configuration)
 
-### 4. WebAssembly Streaming Compilation
+### 6. WebAssembly Streaming Compilation
 - Use WebAssembly.compileStreaming() if not already used
 - Compiles WASM while downloading
 - Impact: Faster WASM initialization
 - Effort: Low (if v86 supports it)
 
-### 5. Split Kernel Loading
+### 7. Split Kernel Loading
 - Load minimal kernel first, mount additional modules as needed
 - Faster initial boot, deferred loading of optional components
 - Impact: 40-60% faster initial boot
