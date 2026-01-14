@@ -82,9 +82,14 @@
             display: flex;
             gap: 10px;
             margin-bottom: 15px;
+            position: relative;
+        }
+        .autocomplete-wrapper {
+            flex: 1;
+            position: relative;
         }
         #command-input {
-            flex: 1;
+            width: 100%;
             padding: 10px 12px;
             font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
             font-size: 14px;
@@ -229,6 +234,40 @@
                 color: #9ca3af;
             }
         }
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .autocomplete-dropdown.show {
+            display: block;
+        }
+        .autocomplete-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            color: var(--text);
+            border-bottom: 1px solid var(--border);
+        }
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        .autocomplete-item:hover,
+        .autocomplete-item.selected {
+            background: var(--primary);
+            color: white;
+        }
         @media (max-width: 600px) {
             body {
                 padding: 10px;
@@ -253,7 +292,10 @@
     </div>
 
     <div class="command-section">
-        <input type="text" id="command-input" placeholder="Enter a command (e.g., ls, uname -a, cat /etc/os-release)" disabled>
+        <div class="autocomplete-wrapper">
+            <input type="text" id="command-input" placeholder="Enter a command (e.g., ls, uname -a, cat /etc/os-release)" disabled autocomplete="off" aria-expanded="false" aria-haspopup="listbox" aria-autocomplete="list">
+            <div id="autocomplete-dropdown" class="autocomplete-dropdown" role="listbox" aria-label="Command suggestions"></div>
+        </div>
         <button id="run-btn" disabled>Run</button>
         <button id="cancel-btn" class="cancel-btn" style="display: none;">Cancel</button>
         <div class="timer-container">
@@ -290,6 +332,54 @@
 
     <script src="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js"></script>
     <script>
+        // Common Linux commands for autocomplete
+        const commonCommands = [
+            'ls', 'ls -la', 'ls -l', 'ls -a',
+            'cd', 'cd ..', 'cd ~',
+            'pwd',
+            'cat', 'cat /etc/os-release', 'cat /etc/passwd',
+            'echo', 'echo "Hello World"',
+            'mkdir', 'rmdir',
+            'rm', 'rm -rf',
+            'cp', 'mv',
+            'touch',
+            'grep', 'grep -r',
+            'find', 'find . -name',
+            'chmod', 'chown',
+            'ps', 'ps aux',
+            'top', 'htop',
+            'kill', 'killall',
+            'df', 'df -h',
+            'du', 'du -sh',
+            'free', 'free -h',
+            'uptime',
+            'uname', 'uname -a', 'uname -r',
+            'whoami', 'who',
+            'date',
+            'cal',
+            'history',
+            'clear',
+            'man',
+            'which',
+            'whereis',
+            'tar', 'tar -xzf', 'tar -czf',
+            'gzip', 'gunzip',
+            'zip', 'unzip',
+            'wget', 'curl',
+            'ssh', 'scp',
+            'ping',
+            'ifconfig', 'ip addr',
+            'netstat',
+            'head', 'tail',
+            'less', 'more',
+            'wc', 'wc -l',
+            'sort', 'uniq',
+            'awk', 'sed',
+            'vi', 'vim', 'nano',
+            'mount', 'umount',
+            'ln', 'ln -s'
+        ].sort();
+
         const statusIndicator = document.getElementById('status-indicator');
         const statusText = document.getElementById('status-text');
         const commandInput = document.getElementById('command-input');
@@ -301,6 +391,7 @@
         const output = document.getElementById('output');
         const toggleScreenBtn = document.getElementById('toggle-screen');
         const screenContainer = document.getElementById('screen-container');
+        const autocompleteDropdown = document.getElementById('autocomplete-dropdown');
 
         let emulator = null;
         let isReady = false;
@@ -315,6 +406,102 @@
         // Prompt ends with "% " - could be "~% ", "~/dir% ", "/path% ", etc.
         const promptPattern = /% $/;
         const maxOutputSize = 50000; // Truncate output after 50KB
+
+        // Autocomplete state
+        let selectedIndex = -1;
+        let filteredCommands = [];
+
+        function showAutocomplete(commands) {
+            if (commands.length === 0) {
+                hideAutocomplete();
+                return;
+            }
+
+            filteredCommands = commands;
+            selectedIndex = -1;
+            autocompleteDropdown.innerHTML = '';
+
+            commands.forEach((cmd, index) => {
+                const item = document.createElement('div');
+                item.className = 'autocomplete-item';
+                item.textContent = cmd;
+                item.setAttribute('role', 'option');
+                item.addEventListener('click', () => {
+                    commandInput.value = cmd;
+                    hideAutocomplete();
+                    commandInput.focus();
+                });
+                autocompleteDropdown.appendChild(item);
+            });
+
+            autocompleteDropdown.classList.add('show');
+            commandInput.setAttribute('aria-expanded', 'true');
+        }
+
+        function hideAutocomplete() {
+            autocompleteDropdown.classList.remove('show');
+            autocompleteDropdown.innerHTML = '';
+            filteredCommands = [];
+            selectedIndex = -1;
+            commandInput.setAttribute('aria-expanded', 'false');
+        }
+
+        function updateAutocomplete() {
+            const value = commandInput.value.trim();
+            
+            if (!value) {
+                hideAutocomplete();
+                return;
+            }
+
+            const matches = commonCommands.filter(cmd => 
+                cmd.toLowerCase().startsWith(value.toLowerCase())
+            );
+
+            showAutocomplete(matches);
+        }
+
+        function selectAutocompleteItem(index) {
+            const items = autocompleteDropdown.querySelectorAll('.autocomplete-item');
+            items.forEach((item, i) => {
+                item.classList.toggle('selected', i === index);
+            });
+
+            // Scroll selected item into view
+            if (items[index]) {
+                items[index].scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        function handleAutocompleteKeydown(e) {
+            if (!autocompleteDropdown.classList.contains('show')) {
+                return false;
+            }
+
+            const items = autocompleteDropdown.querySelectorAll('.autocomplete-item');
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedIndex = (selectedIndex + 1) % items.length;
+                selectAutocompleteItem(selectedIndex);
+                return true;
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedIndex = selectedIndex <= 0 ? items.length - 1 : selectedIndex - 1;
+                selectAutocompleteItem(selectedIndex);
+                return true;
+            } else if (e.key === 'Enter' && selectedIndex >= 0) {
+                e.preventDefault();
+                commandInput.value = filteredCommands[selectedIndex];
+                hideAutocomplete();
+                return true;
+            } else if (e.key === 'Escape') {
+                hideAutocomplete();
+                return true;
+            }
+
+            return false;
+        }
 
         function updateStatus(state, text) {
             statusIndicator.className = 'status-indicator ' + state;
@@ -578,12 +765,30 @@
         });
 
         commandInput.addEventListener('keydown', function(e) {
+            // Handle autocomplete navigation first
+            if (handleAutocompleteKeydown(e)) {
+                return;
+            }
+
             if (e.key === 'Enter') {
                 const cmd = commandInput.value.trim();
                 if (cmd) {
                     sendCommand(cmd);
                     commandInput.value = '';
+                    hideAutocomplete();
                 }
+            }
+        });
+
+        // Add input event listener for autocomplete
+        commandInput.addEventListener('input', function() {
+            updateAutocomplete();
+        });
+
+        // Hide autocomplete when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.autocomplete-wrapper')) {
+                hideAutocomplete();
             }
         });
 
