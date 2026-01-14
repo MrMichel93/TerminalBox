@@ -293,8 +293,8 @@
 
     <div class="command-section">
         <div class="autocomplete-wrapper">
-            <input type="text" id="command-input" placeholder="Enter a command (e.g., ls, uname -a, cat /etc/os-release)" disabled autocomplete="off">
-            <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
+            <input type="text" id="command-input" placeholder="Enter a command (e.g., ls, uname -a, cat /etc/os-release)" disabled autocomplete="off" aria-expanded="false" aria-haspopup="listbox" aria-autocomplete="list">
+            <div id="autocomplete-dropdown" class="autocomplete-dropdown" role="listbox" aria-label="Command suggestions"></div>
         </div>
         <button id="run-btn" disabled>Run</button>
         <button id="cancel-btn" class="cancel-btn" style="display: none;">Cancel</button>
@@ -425,6 +425,7 @@
                 const item = document.createElement('div');
                 item.className = 'autocomplete-item';
                 item.textContent = cmd;
+                item.setAttribute('role', 'option');
                 item.addEventListener('click', () => {
                     commandInput.value = cmd;
                     hideAutocomplete();
@@ -434,6 +435,7 @@
             });
 
             autocompleteDropdown.classList.add('show');
+            commandInput.setAttribute('aria-expanded', 'true');
         }
 
         function hideAutocomplete() {
@@ -441,6 +443,7 @@
             autocompleteDropdown.innerHTML = '';
             filteredCommands = [];
             selectedIndex = -1;
+            commandInput.setAttribute('aria-expanded', 'false');
         }
 
         function updateAutocomplete() {
@@ -784,7 +787,7 @@
 
         // Hide autocomplete when clicking outside
         document.addEventListener('click', function(e) {
-            if (!commandInput.contains(e.target) && !autocompleteDropdown.contains(e.target)) {
+            if (!e.target.closest('.autocomplete-wrapper')) {
                 hideAutocomplete();
             }
         });
