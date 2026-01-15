@@ -1188,6 +1188,8 @@
                 // Parse tar archive
                 const files = parseTar(decompressed.buffer);
                 
+                appendOutput(`[Extracted ${files.length} files from archive]\n`);
+                
                 // Process each file from the archive
                 for (const file of files) {
                     if (file.type === 'directory') {
@@ -1197,31 +1199,44 @@
                             await sendCommandAndWait(`mkdir -p "${dirPath}"`);
                         }
                     } else if (file.type === 'file' && file.content) {
-                        // Create file in emulator
-                        // Use cat with heredoc to create file with content
-                        const escapedContent = file.content.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+                        // Create file in emulator using printf and output redirection
+                        // This approach handles special characters better than heredoc
+                        const filePath = file.name;
+                        const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
                         
-                        // For shell scripts, create and make executable
+                        // Ensure parent directory exists
+                        if (dirPath) {
+                            await sendCommandAndWait(`mkdir -p "${dirPath}"`);
+                        }
+                        
+                        // Create file with content using base64 encoding to avoid shell escaping issues
+                        const base64Content = btoa(file.content);
+                        await sendCommandAndWait(`printf '${base64Content}' | base64 -d > "${filePath}"`);
+                        
+                        // Make shell scripts executable
                         if (file.name.endsWith('.sh')) {
-                            await sendCommandAndWait(`cat > "${file.name}" << 'EOFMARKER'\n${file.content}\nEOFMARKER`);
-                            await sendCommandAndWait(`chmod +x "${file.name}"`);
-                        } else {
-                            // For other files, create with content
-                            await sendCommandAndWait(`cat > "${file.name}" << 'EOFMARKER'\n${file.content}\nEOFMARKER`);
+                            await sendCommandAndWait(`chmod +x "${filePath}"`);
                         }
                     }
                 }
 
-                // Run setup script if it exists
+                // Find and run setup script if it exists
                 const setupScript = files.find(f => f.name.endsWith('/setup.sh') || f.name === 'setup.sh');
                 if (setupScript) {
                     const scriptPath = setupScript.name;
+                    const challengeDir = scriptPath.replace(/\/setup\.sh$/, '') || '.';
+                    
                     appendOutput(`\n[Running challenge setup script]\n`);
-                    await sendCommandAndWait(`cd "${scriptPath.replace(/\/setup\.sh$/, '')}" && bash setup.sh`);
+                    
+                    // Change to challenge directory and run setup
+                    if (challengeDir !== '.') {
+                        await sendCommandAndWait(`cd "${challengeDir}"`);
+                    }
+                    await sendCommandAndWait(`bash setup.sh`);
                 }
 
-                appendOutput(`\n[Challenge loaded successfully!]\n`);
-                appendOutput(`[Navigate to the challenge directory and start exploring]\n\n`);
+                appendOutput(`\n[✓ Challenge loaded successfully!]\n`);
+                appendOutput(`[You can now navigate to the challenge directory and start exploring]\n\n`);
                 
                 // Update button state
                 loadChallengeBtn.textContent = '✓ Loaded!';
@@ -1232,7 +1247,7 @@
 
             } catch (error) {
                 console.error('Error loading challenge:', error);
-                appendOutput(`\n[Error loading challenge: ${error.message}]\n\n`);
+                appendOutput(`\n[✗ Error loading challenge: ${error.message}]\n\n`);
                 alert(`Failed to load challenge: ${error.message}`);
                 
                 // Reset button state
