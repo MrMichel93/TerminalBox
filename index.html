@@ -529,17 +529,23 @@
         }
 
         // Error message for file:// protocol
-        const FILE_PROTOCOL_ERROR_MSG = 'Cannot load challenges when opening HTML file directly.\n\n' +
-                                        'Please run a local web server instead:\n\n' +
-                                        'Option 1 - Python:\n' +
-                                        '  python3 -m http.server 8000\n' +
-                                        '  Then visit: http://localhost:8000\n\n' +
-                                        'Option 2 - Node.js:\n' +
-                                        '  npx http-server -p 8000\n' +
-                                        '  Then visit: http://localhost:8000\n\n' +
-                                        'Option 3 - PHP:\n' +
-                                        '  php -S localhost:8000\n' +
-                                        '  Then visit: http://localhost:8000';
+        const FILE_PROTOCOL_ERROR_MSG = `Cannot load challenges when opening HTML file directly.
+
+Please run a local web server instead:
+
+Option 1 - Python:
+  python3 -m http.server 8000
+  Then visit: http://localhost:8000
+
+Option 2 - Node.js:
+  npx http-server -p 8000
+  Then visit: http://localhost:8000
+
+Option 3 - PHP:
+  php -S localhost:8000
+  Then visit: http://localhost:8000`;
+
+        const FILE_PROTOCOL_TERMINAL_MSG = '\n[✗ Error: Cannot load challenges from file:// protocol]\n[Please run a local web server - see the alert for instructions]\n\n';
 
         // Common Linux commands for autocomplete
         const commonCommands = [
@@ -1309,8 +1315,7 @@
                 // Check if we're on file:// protocol
                 if (isFileProtocol()) {
                     alert(FILE_PROTOCOL_ERROR_MSG);
-                    appendOutput('\n[✗ Error: Cannot load challenges from file:// protocol]\n');
-                    appendOutput('[Please run a local web server - see the alert for instructions]\n\n');
+                    appendOutput(FILE_PROTOCOL_TERMINAL_MSG);
                 } else {
                     alert('Error: Unable to generate URL for this challenge.');
                 }
