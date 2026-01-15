@@ -1089,6 +1089,16 @@
             location.reload();
         });
 
+        // =============================================================================
+        // Challenge Loading System
+        // =============================================================================
+        // This section implements dynamic challenge loading into the Linux emulator.
+        // Instead of downloading .tar.gz files locally, challenges are fetched via
+        // AJAX, decompressed in-browser using pako, parsed from tar format, and
+        // loaded directly into the running emulator by executing commands to create
+        // the necessary files and directories.
+        // =============================================================================
+
         /**
          * Parse a tar archive buffer and extract files
          * @param {ArrayBuffer} buffer - The tar file buffer
@@ -1296,6 +1306,15 @@
                 }, 10000);
             });
         }
+
+        // =============================================================================
+        // Challenge Selection Event Handlers
+        // =============================================================================
+        // These handlers manage the CTF challenge dropdown and load button.
+        // When a challenge is selected, the UI is updated with challenge info.
+        // When "Load Challenge" is clicked, the challenge is fetched and loaded
+        // into the emulator dynamically without any local downloads.
+        // =============================================================================
 
         // Challenge selection handlers
         challengeSelect.addEventListener('change', function() {
