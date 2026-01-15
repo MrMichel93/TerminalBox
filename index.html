@@ -1124,6 +1124,17 @@
         }
 
         /**
+         * Escape a string for safe use in shell commands
+         * @param {string} str - The string to escape
+         * @returns {string} Shell-escaped string
+         */
+        function escapeShell(str) {
+            // Replace single quotes with '\'' (end quote, escaped quote, start quote)
+            // This works in all POSIX shells and is safer than trying to escape special chars
+            return "'" + str.replace(/'/g, "'\\''") + "'";
+        }
+
+        /**
          * Safely encode content to base64, handling both text and binary data
          * @param {string} content - The content to encode
          * @returns {string} Base64 encoded content
@@ -1258,7 +1269,7 @@
                         // Create directory in emulator
                         const dirPath = safeName.replace(/\/$/, ''); // Remove trailing slash
                         if (dirPath) {
-                            await sendCommandAndWait(`mkdir -p "${dirPath}"`);
+                            await sendCommandAndWait(`mkdir -p ${escapeShell(dirPath)}`);
                         }
                     } else if (file.type === 'file' && file.content) {
                         // Create file in emulator using base64 encoding
@@ -1268,7 +1279,7 @@
                         
                         // Ensure parent directory exists
                         if (dirPath) {
-                            await sendCommandAndWait(`mkdir -p "${dirPath}"`);
+                            await sendCommandAndWait(`mkdir -p ${escapeShell(dirPath)}`);
                         }
                         
                         // Safely encode file content to base64, handling non-Latin1 characters
@@ -1281,12 +1292,13 @@
                             appendOutput(`[Warning: Large file ${filePath}, attempting to create...]\n`);
                         }
                         
-                        // Use echo -n instead of printf to avoid printf injection vulnerabilities
-                        await sendCommandAndWait(`echo -n '${base64Content}' | base64 -d > "${filePath}"`);
+                        // Use echo -n with base64 content and properly escaped file path
+                        // Base64 content is safe (alphanumeric + / and =), but we still escape it
+                        await sendCommandAndWait(`echo -n ${escapeShell(base64Content)} | base64 -d > ${escapeShell(filePath)}`);
                         
                         // Make shell scripts executable
                         if (filePath.endsWith('.sh')) {
-                            await sendCommandAndWait(`chmod +x "${filePath}"`);
+                            await sendCommandAndWait(`chmod +x ${escapeShell(filePath)}`);
                         }
                     }
                 }
@@ -1294,15 +1306,19 @@
                 // Find and run setup script if it exists
                 const setupScript = files.find(f => f.name.endsWith('/setup.sh') || f.name === 'setup.sh');
                 if (setupScript) {
-                    const scriptPath = setupScript.name;
-                    const challengeDir = scriptPath.replace(/\/setup\.sh$/, '') || '.';
+                    const safeName = sanitizePath(setupScript.name);
+                    if (!safeName) {
+                        throw new Error('Setup script has invalid path');
+                    }
+                    
+                    const challengeDir = safeName.replace(/\/setup\.sh$/, '') || '.';
                     
                     appendOutput(`\n[Running challenge setup script]\n`);
                     
-                    // Run setup script with proper directory context
+                    // Run setup script with proper directory context and escaping
                     // Note: cd in one command doesn't persist, so we combine cd && bash
                     if (challengeDir !== '.') {
-                        await sendCommandAndWait(`cd "${challengeDir}" && bash setup.sh`);
+                        await sendCommandAndWait(`cd ${escapeShell(challengeDir)} && bash setup.sh`);
                     } else {
                         await sendCommandAndWait(`bash setup.sh`);
                     }
@@ -1332,13 +1348,13 @@
         /**
          * Send a command to the emulator and wait for it to complete
          * @param {string} cmd - The command to execute
-         * @returns {Promise} Resolves when command completes, rejects on timeout
+         * @returns {Promise} Resolves when command completes, rejects if emulator not ready
          */
         function sendCommandAndWait(cmd) {
             return new Promise((resolve, reject) => {
                 if (!emulator || !isReady) {
-                    // Early return without modifying global state
-                    resolve();
+                    // Reject if emulator is not ready to prevent race conditions
+                    reject(new Error('Emulator not ready'));
                     return;
                 }
 
