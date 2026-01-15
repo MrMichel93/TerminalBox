@@ -21,6 +21,9 @@
     <!-- V86 library: JavaScript emulator code preloaded for faster execution -->
     <link rel="preload" href="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js" as="script">
     
+    <!-- Pako library for gzip decompression (used for challenge .tar.gz extraction) -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js" as="script" crossorigin="anonymous">
+    
     <style>
         * {
             box-sizing: border-box;
@@ -401,7 +404,7 @@
                 <option value="challenge7-script-debugger">Challenge 7: Script Debugger</option>
                 <option value="challenge8-intrusion-analysis">Challenge 8: System Intrusion Analysis</option>
             </select>
-            <button id="download-challenge-btn" class="download-btn" disabled>Download Challenge</button>
+            <button id="load-challenge-btn" class="download-btn" disabled>Load Challenge</button>
         </div>
         <div id="challenge-info" class="challenge-info"></div>
     </div>
@@ -466,6 +469,7 @@
         Boot time is typically 10-30 seconds depending on your connection and device. The main bottleneck is downloading the ~68MB kernel image.
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js"></script>
     <script>
         // Common Linux commands for autocomplete
@@ -610,7 +614,7 @@
         const screenContainer = document.getElementById('screen-container');
         const autocompleteDropdown = document.getElementById('autocomplete-dropdown');
         const challengeSelect = document.getElementById('challenge-select');
-        const downloadChallengeBtn = document.getElementById('download-challenge-btn');
+        const loadChallengeBtn = document.getElementById('load-challenge-btn');
         const challengeInfo = document.getElementById('challenge-info');
 
         let emulator = null;
@@ -1085,13 +1089,327 @@
             location.reload();
         });
 
+        // =============================================================================
+        // Challenge Loading System
+        // =============================================================================
+        // This section implements dynamic challenge loading into the Linux emulator.
+        // Instead of downloading .tar.gz files locally, challenges are fetched via
+        // AJAX, decompressed in-browser using pako, parsed from tar format, and
+        // loaded directly into the running emulator by executing commands to create
+        // the necessary files and directories.
+        // =============================================================================
+
+        /**
+         * Validate and sanitize file path to prevent directory traversal attacks
+         * @param {string} path - The file path to validate
+         * @returns {string|null} Sanitized path or null if invalid
+         */
+        function sanitizePath(path) {
+            // Remove any leading slashes
+            path = path.replace(/^\/+/, '');
+            
+            // Check for directory traversal attempts
+            if (path.includes('..') || path.includes('//')) {
+                console.warn(`Rejected suspicious path: ${path}`);
+                return null;
+            }
+            
+            // Check for absolute paths or paths starting with special characters
+            if (path.startsWith('/') || path.startsWith('~')) {
+                console.warn(`Rejected absolute path: ${path}`);
+                return null;
+            }
+            
+            return path;
+        }
+
+        /**
+         * Escape a string for safe use in shell commands
+         * @param {string} str - The string to escape
+         * @returns {string} Shell-escaped string
+         */
+        function escapeShell(str) {
+            // Replace single quotes with '\'' (end quote, escaped quote, start quote)
+            // This works in all POSIX shells and is safer than trying to escape special chars
+            return "'" + str.replace(/'/g, "'\\''") + "'";
+        }
+
+        /**
+         * Safely encode content to base64, handling both text and binary data
+         * @param {string} content - The content to encode
+         * @returns {string} Base64 encoded content
+         */
+        function safeBase64Encode(content) {
+            try {
+                // For ASCII-only content, btoa works fine
+                return btoa(content);
+            } catch (e) {
+                // For content with non-Latin1 characters, use TextEncoder
+                const encoder = new TextEncoder();
+                const uint8Array = encoder.encode(content);
+                let binary = '';
+                uint8Array.forEach(byte => {
+                    binary += String.fromCharCode(byte);
+                });
+                return btoa(binary);
+            }
+        }
+
+        /**
+         * Parse a tar archive buffer and extract files
+         * @param {ArrayBuffer} buffer - The tar file buffer
+         * @returns {Array} Array of file objects with {name, type, content}
+         */
+        function parseTar(buffer) {
+            const files = [];
+            const view = new DataView(buffer);
+            let offset = 0;
+
+            while (offset < buffer.byteLength - 512) {
+                // Read header (512 bytes)
+                const header = new Uint8Array(buffer, offset, 512);
+                
+                // Check for end of archive (all zeros)
+                if (header[0] === 0) break;
+                
+                // Extract filename (offset 0, 100 bytes, null-terminated)
+                let nameBytes = header.slice(0, 100);
+                let nameEnd = nameBytes.indexOf(0);
+                if (nameEnd === -1) nameEnd = 100;
+                const name = new TextDecoder().decode(nameBytes.slice(0, nameEnd));
+                
+                // Extract file size (offset 124, 12 bytes, octal)
+                const sizeBytes = new TextDecoder().decode(header.slice(124, 136)).trim();
+                const size = parseInt(sizeBytes, 8) || 0;
+                
+                // Extract type flag (offset 156, 1 byte)
+                // '0' or '\0' = normal file, '5' = directory
+                const typeFlag = String.fromCharCode(header[156]);
+                const isDirectory = typeFlag === '5';
+                
+                offset += 512; // Move past header
+                
+                // Read file content if it's a file
+                let content = '';
+                if (!isDirectory && size > 0) {
+                    const contentBytes = new Uint8Array(buffer, offset, size);
+                    content = new TextDecoder().decode(contentBytes);
+                }
+                
+                files.push({
+                    name: name,
+                    type: isDirectory ? 'directory' : 'file',
+                    content: content,
+                    size: size
+                });
+                
+                // Move to next entry (content is padded to 512-byte boundary)
+                const paddedSize = Math.ceil(size / 512) * 512;
+                offset += paddedSize;
+            }
+            
+            return files;
+        }
+
+        /**
+         * Load a challenge into the emulator by fetching and extracting the tar.gz file
+         * @param {string} challengeId - The challenge identifier
+         */
+        async function loadChallengeIntoEmulator(challengeId) {
+            if (!emulator || !isReady) {
+                alert('Please wait for the emulator to finish booting before loading a challenge.');
+                return;
+            }
+
+            const challenge = challenges[challengeId];
+            if (!challenge) {
+                console.error('Challenge not found:', challengeId);
+                return;
+            }
+
+            const url = getChallengeUrl(challengeId);
+            if (!url) {
+                alert('Error: Unable to generate URL for this challenge.');
+                return;
+            }
+
+            try {
+                // Update UI to show loading state
+                loadChallengeBtn.disabled = true;
+                loadChallengeBtn.textContent = 'Loading...';
+                appendOutput(`\n[Loading challenge: ${challenge.name}]\n`);
+
+                // Fetch the .tar.gz file
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch challenge: ${response.statusText}`);
+                }
+
+                const arrayBuffer = await response.arrayBuffer();
+                
+                // Decompress gzip using pako
+                const compressed = new Uint8Array(arrayBuffer);
+                const decompressed = pako.inflate(compressed);
+                
+                // Parse tar archive
+                const files = parseTar(decompressed.buffer);
+                
+                appendOutput(`[Extracted ${files.length} files from archive]\n`);
+                
+                // Process each file from the archive
+                for (const file of files) {
+                    // Validate and sanitize file paths to prevent directory traversal
+                    const safeName = sanitizePath(file.name);
+                    if (!safeName) {
+                        appendOutput(`[Skipped suspicious file: ${file.name}]\n`);
+                        continue;
+                    }
+                    
+                    if (file.type === 'directory') {
+                        // Create directory in emulator
+                        const dirPath = safeName.replace(/\/$/, ''); // Remove trailing slash
+                        if (dirPath) {
+                            await sendCommandAndWait(`mkdir -p ${escapeShell(dirPath)}`);
+                        }
+                    } else if (file.type === 'file' && file.content) {
+                        // Create file in emulator using base64 encoding
+                        // This approach handles special characters better than heredoc
+                        const filePath = safeName;
+                        const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
+                        
+                        // Ensure parent directory exists
+                        if (dirPath) {
+                            await sendCommandAndWait(`mkdir -p ${escapeShell(dirPath)}`);
+                        }
+                        
+                        // Safely encode file content to base64, handling non-Latin1 characters
+                        // This avoids shell escaping issues and supports binary/UTF-8 content
+                        const base64Content = safeBase64Encode(file.content);
+                        
+                        // Check if base64 content is too large (>100KB encoded ~ 75KB original)
+                        if (base64Content.length > 100000) {
+                            console.warn(`File ${filePath} is large (${base64Content.length} chars), may fail`);
+                            appendOutput(`[Warning: Large file ${filePath}, attempting to create...]\n`);
+                        }
+                        
+                        // Use echo -n with base64 content and properly escaped file path
+                        // Base64 content is safe (alphanumeric + / and =), but we still escape it
+                        await sendCommandAndWait(`echo -n ${escapeShell(base64Content)} | base64 -d > ${escapeShell(filePath)}`);
+                        
+                        // Make shell scripts executable
+                        if (filePath.endsWith('.sh')) {
+                            await sendCommandAndWait(`chmod +x ${escapeShell(filePath)}`);
+                        }
+                    }
+                }
+
+                // Find and run setup script if it exists
+                const setupScript = files.find(f => f.name.endsWith('/setup.sh') || f.name === 'setup.sh');
+                if (setupScript) {
+                    const safeName = sanitizePath(setupScript.name);
+                    if (!safeName) {
+                        throw new Error('Setup script has invalid path');
+                    }
+                    
+                    const challengeDir = safeName.replace(/\/setup\.sh$/, '') || '.';
+                    
+                    appendOutput(`\n[Running challenge setup script]\n`);
+                    
+                    // Run setup script with proper directory context and escaping
+                    // Note: cd in one command doesn't persist, so we combine cd && bash
+                    if (challengeDir !== '.') {
+                        await sendCommandAndWait(`cd ${escapeShell(challengeDir)} && bash setup.sh`);
+                    } else {
+                        await sendCommandAndWait(`bash setup.sh`);
+                    }
+                }
+
+                appendOutput(`\n[✓ Challenge loaded successfully!]\n`);
+                appendOutput(`[You can now navigate to the challenge directory and start exploring]\n\n`);
+                
+                // Update button state
+                loadChallengeBtn.textContent = '✓ Loaded!';
+                setTimeout(() => {
+                    loadChallengeBtn.textContent = 'Load Challenge';
+                    loadChallengeBtn.disabled = false;
+                }, 2000);
+
+            } catch (error) {
+                console.error('Error loading challenge:', error);
+                appendOutput(`\n[✗ Error loading challenge: ${error.message}]\n\n`);
+                alert(`Failed to load challenge: ${error.message}`);
+                
+                // Reset button state
+                loadChallengeBtn.textContent = 'Load Challenge';
+                loadChallengeBtn.disabled = false;
+            }
+        }
+
+        /**
+         * Send a command to the emulator and wait for it to complete
+         * @param {string} cmd - The command to execute
+         * @returns {Promise} Resolves when command completes, rejects if emulator not ready
+         */
+        function sendCommandAndWait(cmd) {
+            return new Promise((resolve, reject) => {
+                if (!emulator || !isReady) {
+                    // Reject if emulator is not ready to prevent race conditions
+                    reject(new Error('Emulator not ready'));
+                    return;
+                }
+
+                // Store original state
+                const wasWaiting = waitingForOutput;
+                
+                currentCommand = cmd;
+                commandOutput = '';
+                outputTruncated = false;
+                waitingForOutput = true;
+                outputBuffer = '';
+
+                // Send command
+                emulator.serial0_send(cmd + '\n');
+
+                // Poll for completion
+                const checkInterval = setInterval(() => {
+                    if (!waitingForOutput) {
+                        clearInterval(checkInterval);
+                        resolve();
+                    }
+                }, 100);
+
+                // Timeout after 10 seconds with warning
+                setTimeout(() => {
+                    // Always clear the interval to prevent memory leaks
+                    clearInterval(checkInterval);
+                    
+                    if (waitingForOutput) {
+                        console.warn(`Command timed out after 10s: ${cmd}`);
+                        appendOutput(`\n[Warning: Command may still be running in background]\n`);
+                        waitingForOutput = wasWaiting;
+                    }
+                    
+                    resolve(); // Resolve anyway to continue loading
+                }, 10000);
+            });
+        }
+
+        // =============================================================================
+        // Challenge Selection Event Handlers
+        // =============================================================================
+        // These handlers manage the CTF challenge dropdown and load button.
+        // When a challenge is selected, the UI is updated with challenge info.
+        // When "Load Challenge" is clicked, the challenge is fetched and loaded
+        // into the emulator dynamically without any local downloads.
+        // =============================================================================
+
         // Challenge selection handlers
         challengeSelect.addEventListener('change', function() {
             const selectedValue = this.value;
             
             if (!selectedValue) {
                 // No challenge selected
-                downloadChallengeBtn.disabled = true;
+                loadChallengeBtn.disabled = true;
                 challengeInfo.classList.remove('visible');
                 challengeInfo.innerHTML = '';
                 return;
@@ -1100,8 +1418,8 @@
             const challenge = challenges[selectedValue];
             if (!challenge) return;
 
-            // Enable download button
-            downloadChallengeBtn.disabled = false;
+            // Enable load button only if emulator is ready
+            loadChallengeBtn.disabled = !isReady;
 
             // Show challenge info with proper HTML escaping
             const difficultyClass = challenge.difficulty.replace(/\s+/g, '-');
@@ -1119,40 +1437,17 @@
                 <br>
                 <span style="color: var(--text); margin-top: 5px; display: block;">${escapeHtml(challenge.description)}</span>
                 <br>
-                <small style="color: #666;">Download URL: <code style="background: var(--border); padding: 2px 4px; border-radius: 2px;">${escapeHtml(getChallengeUrl(selectedValue))}</code></small>
+                <small style="color: #666;">This challenge will be loaded directly into the emulator</small>
             `;
             challengeInfo.classList.add('visible');
         });
 
-        downloadChallengeBtn.addEventListener('click', function() {
+        // Load challenge button handler
+        loadChallengeBtn.addEventListener('click', function() {
             const selectedValue = challengeSelect.value;
             if (!selectedValue) return;
 
-            const downloadUrl = getChallengeUrl(selectedValue);
-            if (!downloadUrl) {
-                alert('Error: Unable to generate download URL for this challenge.');
-                return;
-            }
-
-            try {
-                // Create temporary link and trigger download
-                const link = document.createElement('a');
-                link.href = downloadUrl;
-                link.download = challenges[selectedValue].filename;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-
-                // Show feedback
-                const originalText = downloadChallengeBtn.textContent;
-                downloadChallengeBtn.textContent = '✓ Downloaded!';
-                setTimeout(() => {
-                    downloadChallengeBtn.textContent = originalText;
-                }, 2000);
-            } catch (error) {
-                console.error('Download error:', error);
-                alert('Error: Failed to initiate download. Please try again or download directly from the disk-images folder.');
-            }
+            loadChallengeIntoEmulator(selectedValue);
         });
 
         // Start the emulator
