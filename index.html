@@ -562,7 +562,7 @@
             },
             'challenge8-intrusion-analysis': {
                 name: 'System Intrusion Analysis',
-                difficulty: 'very-hard',
+                difficulty: 'very hard',
                 description: 'Perform forensic analysis on a compromised system.',
                 filename: 'challenge8-intrusion-analysis.tar.gz'
             }
@@ -576,16 +576,13 @@
             // Common logic: get the base path by removing the filename from pathname
             const basePath = window.location.pathname.replace(/\/[^/]*$/, '');
             
-            if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                // For local testing, use origin + base path
+            // For localhost and GitHub Pages, use origin + base path
+            if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('github.io')) {
                 return window.location.origin + basePath;
-            } else if (hostname.includes('github.io')) {
-                // For GitHub Pages, use origin + base path
-                return window.location.origin + basePath;
-            } else {
-                // Fallback to relative path
-                return '.';
             }
+            
+            // Fallback to relative path for other environments
+            return '.';
         }
 
         // Function to get challenge download URL
@@ -1106,15 +1103,23 @@
             // Enable download button
             downloadChallengeBtn.disabled = false;
 
-            // Show challenge info
+            // Show challenge info with proper HTML escaping
             const difficultyClass = challenge.difficulty.replace(/\s+/g, '-');
+            
+            // Helper function to escape HTML
+            const escapeHtml = (text) => {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            };
+            
             challengeInfo.innerHTML = `
-                <strong>${challenge.name}</strong>
-                <span class="difficulty ${difficultyClass}">${challenge.difficulty.toUpperCase()}</span>
+                <strong>${escapeHtml(challenge.name)}</strong>
+                <span class="difficulty ${difficultyClass}">${escapeHtml(challenge.difficulty.toUpperCase())}</span>
                 <br>
-                <span style="color: var(--text); margin-top: 5px; display: block;">${challenge.description}</span>
+                <span style="color: var(--text); margin-top: 5px; display: block;">${escapeHtml(challenge.description)}</span>
                 <br>
-                <small style="color: #666;">Download URL: <code style="background: var(--border); padding: 2px 4px; border-radius: 2px;">${getChallengeUrl(selectedValue)}</code></small>
+                <small style="color: #666;">Download URL: <code style="background: var(--border); padding: 2px 4px; border-radius: 2px;">${escapeHtml(getChallengeUrl(selectedValue))}</code></small>
             `;
             challengeInfo.classList.add('visible');
         });
