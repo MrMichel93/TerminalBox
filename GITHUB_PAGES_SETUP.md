@@ -14,7 +14,7 @@ This repository is pre-configured for GitHub Pages hosting with the following se
 
 ### Step 1: Access Repository Settings
 
-1. Go to your GitHub repository: `https://github.com/MrMichel93/TerminalBox`
+1. Go to your GitHub repository: `https://github.com/yourusername/TerminalBox` (replace with your actual username)
 2. Click on **Settings** (in the top repository menu)
 3. In the left sidebar, click on **Pages** (under "Code and automation")
 
@@ -33,10 +33,10 @@ This repository is pre-configured for GitHub Pages hosting with the following se
 ### Step 3: Access Your Live Site
 
 Once deployed, your site will be available at:
-- **Main URL**: `https://MrMichel93.github.io/TerminalBox/`
-- **Disk Images**: `https://MrMichel93.github.io/TerminalBox/disk-images/`
+- **Main URL**: `https://yourusername.github.io/TerminalBox/`
+- **Disk Images**: `https://yourusername.github.io/TerminalBox/disk-images/`
 
-If your username is different, replace `MrMichel93` with your actual GitHub username.
+(Replace `yourusername` with your actual GitHub username)
 
 ## What Gets Hosted
 
