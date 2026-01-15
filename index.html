@@ -1100,6 +1100,51 @@
         // =============================================================================
 
         /**
+         * Validate and sanitize file path to prevent directory traversal attacks
+         * @param {string} path - The file path to validate
+         * @returns {string|null} Sanitized path or null if invalid
+         */
+        function sanitizePath(path) {
+            // Remove any leading slashes
+            path = path.replace(/^\/+/, '');
+            
+            // Check for directory traversal attempts
+            if (path.includes('..') || path.includes('//')) {
+                console.warn(`Rejected suspicious path: ${path}`);
+                return null;
+            }
+            
+            // Check for absolute paths or paths starting with special characters
+            if (path.startsWith('/') || path.startsWith('~')) {
+                console.warn(`Rejected absolute path: ${path}`);
+                return null;
+            }
+            
+            return path;
+        }
+
+        /**
+         * Safely encode content to base64, handling both text and binary data
+         * @param {string} content - The content to encode
+         * @returns {string} Base64 encoded content
+         */
+        function safeBase64Encode(content) {
+            try {
+                // For ASCII-only content, btoa works fine
+                return btoa(content);
+            } catch (e) {
+                // For content with non-Latin1 characters, use TextEncoder
+                const encoder = new TextEncoder();
+                const uint8Array = encoder.encode(content);
+                let binary = '';
+                uint8Array.forEach(byte => {
+                    binary += String.fromCharCode(byte);
+                });
+                return btoa(binary);
+            }
+        }
+
+        /**
          * Parse a tar archive buffer and extract files
          * @param {ArrayBuffer} buffer - The tar file buffer
          * @returns {Array} Array of file objects with {name, type, content}
@@ -1202,16 +1247,23 @@
                 
                 // Process each file from the archive
                 for (const file of files) {
+                    // Validate and sanitize file paths to prevent directory traversal
+                    const safeName = sanitizePath(file.name);
+                    if (!safeName) {
+                        appendOutput(`[Skipped suspicious file: ${file.name}]\n`);
+                        continue;
+                    }
+                    
                     if (file.type === 'directory') {
                         // Create directory in emulator
-                        const dirPath = file.name.replace(/\/$/, ''); // Remove trailing slash
+                        const dirPath = safeName.replace(/\/$/, ''); // Remove trailing slash
                         if (dirPath) {
                             await sendCommandAndWait(`mkdir -p "${dirPath}"`);
                         }
                     } else if (file.type === 'file' && file.content) {
                         // Create file in emulator using base64 encoding
                         // This approach handles special characters better than heredoc
-                        const filePath = file.name;
+                        const filePath = safeName;
                         const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
                         
                         // Ensure parent directory exists
@@ -1219,10 +1271,9 @@
                             await sendCommandAndWait(`mkdir -p "${dirPath}"`);
                         }
                         
-                        // Create file with content using base64 encoding to avoid shell escaping issues
-                        // For very large files, this could hit command length limits, but CTF challenge
-                        // files are typically small (< 10KB each)
-                        const base64Content = btoa(file.content);
+                        // Safely encode file content to base64, handling non-Latin1 characters
+                        // This avoids shell escaping issues and supports binary/UTF-8 content
+                        const base64Content = safeBase64Encode(file.content);
                         
                         // Check if base64 content is too large (>100KB encoded ~ 75KB original)
                         if (base64Content.length > 100000) {
@@ -1230,10 +1281,11 @@
                             appendOutput(`[Warning: Large file ${filePath}, attempting to create...]\n`);
                         }
                         
-                        await sendCommandAndWait(`printf '${base64Content}' | base64 -d > "${filePath}"`);
+                        // Use echo -n instead of printf to avoid printf injection vulnerabilities
+                        await sendCommandAndWait(`echo -n '${base64Content}' | base64 -d > "${filePath}"`);
                         
                         // Make shell scripts executable
-                        if (file.name.endsWith('.sh')) {
+                        if (filePath.endsWith('.sh')) {
                             await sendCommandAndWait(`chmod +x "${filePath}"`);
                         }
                     }
@@ -1285,6 +1337,7 @@
         function sendCommandAndWait(cmd) {
             return new Promise((resolve, reject) => {
                 if (!emulator || !isReady) {
+                    // Early return without modifying global state
                     resolve();
                     return;
                 }
@@ -1311,12 +1364,15 @@
 
                 // Timeout after 10 seconds with warning
                 setTimeout(() => {
+                    // Always clear the interval to prevent memory leaks
                     clearInterval(checkInterval);
+                    
                     if (waitingForOutput) {
                         console.warn(`Command timed out after 10s: ${cmd}`);
                         appendOutput(`\n[Warning: Command may still be running in background]\n`);
+                        waitingForOutput = wasWaiting;
                     }
-                    waitingForOutput = wasWaiting;
+                    
                     resolve(); // Resolve anyway to continue loading
                 }, 10000);
             });
