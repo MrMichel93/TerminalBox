@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTF Challenge Disk Images - TerminalBox</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        :root {
+            --bg: #f9fafb;
+            --text: #1f2937;
+            --surface: #fff;
+            --border: #e5e7eb;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --code-bg: #f3f4f6;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #111;
+                --text: #e5e7eb;
+                --surface: #1f1f1f;
+                --border: #374151;
+                --code-bg: #1f2937;
+            }
+        }
+        h1 {
+            margin-top: 0;
+            color: var(--text);
+        }
+        h2 {
+            margin-top: 2rem;
+            color: var(--text);
+        }
+        .description {
+            color: #666;
+            margin-bottom: 2rem;
+        }
+        @media (prefers-color-scheme: dark) {
+            .description {
+                color: #9ca3af;
+            }
+        }
+        .challenge-list {
+            list-style: none;
+            padding: 0;
+        }
+        .challenge-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .challenge-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .challenge-info {
+            flex: 1;
+        }
+        .challenge-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--text);
+            margin-bottom: 0.25rem;
+        }
+        .challenge-desc {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        @media (prefers-color-scheme: dark) {
+            .challenge-desc {
+                color: #9ca3af;
+            }
+        }
+        .difficulty {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-right: 1rem;
+        }
+        .difficulty.easy {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .difficulty.medium {
+            background: #fed7aa;
+            color: #92400e;
+        }
+        .difficulty.hard {
+            background: #fecaca;
+            color: #991b1b;
+        }
+        .difficulty.very-hard {
+            background: #ddd6fe;
+            color: #5b21b6;
+        }
+        @media (prefers-color-scheme: dark) {
+            .difficulty.easy {
+                background: #064e3b;
+                color: #6ee7b7;
+            }
+            .difficulty.medium {
+                background: #78350f;
+                color: #fcd34d;
+            }
+            .difficulty.hard {
+                background: #7f1d1d;
+                color: #fca5a5;
+            }
+            .difficulty.very-hard {
+                background: #4c1d95;
+                color: #c4b5fd;
+            }
+        }
+        .download-btn {
+            padding: 0.5rem 1.25rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: background 0.2s;
+            display: inline-block;
+        }
+        .download-btn:hover {
+            background: var(--primary-hover);
+        }
+        .info-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        code {
+            background: var(--code-bg);
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background: var(--code-bg);
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        @media (max-width: 600px) {
+            .challenge-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .download-btn {
+                margin-top: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="../" class="back-link">← Back to TerminalBox</a>
+    
+    <h1>CTF Challenge Disk Images</h1>
+    <p class="description">
+        Download disk images for CTF challenges. Each disk image is a compressed archive containing 
+        a complete challenge environment ready to run in the TerminalBox Linux emulator.
+    </p>
+
+    <div class="info-box">
+        <h2 style="margin-top: 0;">About These Disk Images</h2>
+        <p>
+            Each disk image is a <code>.tar.gz</code> archive containing:
+        </p>
+        <ul>
+            <li>Challenge setup script (<code>setup.sh</code>)</li>
+            <li>Challenge documentation (<code>README.md</code>)</li>
+            <li>All necessary files and configurations</li>
+        </ul>
+        <p>
+            <strong>Total size:</strong> ~28KB for all 8 challenges (extremely lightweight)<br>
+            <strong>Format:</strong> tar.gz (gzipped tar archive)<br>
+            <strong>Compatible with:</strong> Linux, macOS, Windows (with appropriate tools)
+        </p>
+    </div>
+
+    <h2>Available Challenges</h2>
+    <ul class="challenge-list">
+        <li class="challenge-item">
+            <div class="challenge-info">
+                <div class="challenge-name">Challenge 1: Hidden Files Explorer</div>
+                <div class="challenge-desc">
+                    <span class="difficulty easy">Easy</span>
+                    Learn to find and work with hidden files in Linux
+                </div>
+            </div>
+            <a href="challenge1-hidden-files.tar.gz" class="download-btn" download>Download</a>
+        </li>
+        
+        <li class="challenge-item">
+            <div class="challenge-info">
+                <div class="challenge-name">Challenge 2: Process Detective</div>
+                <div class="challenge-desc">
+                    <span class="difficulty easy">Easy</span>
+                    Master process management and monitoring
+                </div>
+            </div>
+            <a href="challenge2-process-detective.tar.gz" class="download-btn" download>Download</a>
+        </li>
+        
+        <li class="challenge-item">
+            <div class="challenge-info">
+                <div class="challenge-name">Challenge 3: Network Navigator</div>
+                <div class="challenge-desc">
+                    <span class="difficulty medium">Medium</span>
+                    Explore network configuration and troubleshooting
+                </div>
+            </div>
+            <a href="challenge3-network-navigator.tar.gz" class="download-btn" download>Download</a>
+        </li>
+        
+        <li class="challenge-item">
+            <div class="challenge-info">
+                <div class="challenge-name">Challenge 4: Log File Forensics</div>
+                <div class="challenge-desc">
+                    <span class="difficulty medium">Medium</span>
+                    Investigate system logs to find security issues
+                </div>
+            </div>
+            <a href="challenge4-log-forensics.tar.gz" class="download-btn" download>Download</a>
+        </li>
+        
+        <li class="challenge-item">
+            <div class="challenge-info">
+                <div class="challenge-name">Challenge 5: Permission Puzzle</div>
+                <div class="challenge-desc">
+                    <span class="difficulty medium">Medium</span>
+                    Solve file permission and ownership challenges
+                </div>
+            </div>
+            <a href="challenge5-permission-puzzle.tar.gz" class="download-btn" download>Download</a>
+        </li>
+        
+        <li class="challenge-item">
+            <div class="challenge-info">
+                <div class="challenge-name">Challenge 6: Archive Archaeology</div>
+                <div class="challenge-desc">
+                    <span class="difficulty hard">Hard</span>
+                    Extract and analyze nested compressed archives
+                </div>
+            </div>
+            <a href="challenge6-archive-archaeology.tar.gz" class="download-btn" download>Download</a>
+        </li>
+        
+        <li class="challenge-item">
+            <div class="challenge-info">
+                <div class="challenge-name">Challenge 7: Script Debugger</div>
+                <div class="challenge-desc">
+                    <span class="difficulty hard">Hard</span>
+                    Debug and fix broken shell scripts
+                </div>
+            </div>
+            <a href="challenge7-script-debugger.tar.gz" class="download-btn" download>Download</a>
+        </li>
+        
+        <li class="challenge-item">
+            <div class="challenge-info">
+                <div class="challenge-name">Challenge 8: System Intrusion Analysis</div>
+                <div class="challenge-desc">
+                    <span class="difficulty very-hard">Very Hard</span>
+                    Investigate a simulated system breach
+                </div>
+            </div>
+            <a href="challenge8-intrusion-analysis.tar.gz" class="download-btn" download>Download</a>
+        </li>
+    </ul>
+
+    <h2>How to Use</h2>
+    <div class="info-box">
+        <h3 style="margin-top: 0;">Download and Extract</h3>
+        <pre><code># Download a challenge (or use the download buttons above)
+wget https://yourusername.github.io/TerminalBox/disk-images/challenge1-hidden-files.tar.gz
+
+# Extract the challenge
+tar -xzf challenge1-hidden-files.tar.gz
+
+# Navigate to the challenge directory
+cd challenge1-hidden-files
+
+# Read the challenge instructions
+cat README.md
+
+# Run the setup script
+bash setup.sh</code></pre>
+
+        <h3>For Website Integration</h3>
+        <p>
+            These disk images can be easily integrated into web applications:
+        </p>
+        <ul>
+            <li>Direct download links via GitHub Pages</li>
+            <li>Embedded in educational platforms</li>
+            <li>Referenced in CTF hosting services</li>
+            <li>Distributed to students in training sessions</li>
+        </ul>
+    </div>
+
+    <h2>Direct Download URLs</h2>
+    <div class="info-box">
+        <p>Use these URLs to programmatically access the disk images:</p>
+        <pre><code>https://yourusername.github.io/TerminalBox/disk-images/challenge1-hidden-files.tar.gz
+https://yourusername.github.io/TerminalBox/disk-images/challenge2-process-detective.tar.gz
+https://yourusername.github.io/TerminalBox/disk-images/challenge3-network-navigator.tar.gz
+https://yourusername.github.io/TerminalBox/disk-images/challenge4-log-forensics.tar.gz
+https://yourusername.github.io/TerminalBox/disk-images/challenge5-permission-puzzle.tar.gz
+https://yourusername.github.io/TerminalBox/disk-images/challenge6-archive-archaeology.tar.gz
+https://yourusername.github.io/TerminalBox/disk-images/challenge7-script-debugger.tar.gz
+https://yourusername.github.io/TerminalBox/disk-images/challenge8-intrusion-analysis.tar.gz</code></pre>
+        <p style="margin-bottom: 0;">
+            <em>Note: Replace "yourusername" with the actual GitHub username once GitHub Pages is enabled.</em>
+        </p>
+    </div>
+</body>
+</html>

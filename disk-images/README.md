@@ -2,6 +2,14 @@
 
 This directory contains disk images for all CTF challenges in the repository. These disk images are designed to be easily distributed, hosted, and loaded on different websites or platforms.
 
+## 🌐 GitHub Pages Hosting
+
+These disk images are hosted via GitHub Pages and can be accessed at:
+- **Browse all challenges:** `https://yourusername.github.io/TerminalBox/disk-images/`
+- **Direct downloads:** `https://yourusername.github.io/TerminalBox/disk-images/challenge1-hidden-files.tar.gz`
+
+Replace `yourusername` with the actual GitHub username once GitHub Pages is enabled for this repository.
+
 ## About the Disk Images
 
 Each disk image is a compressed tar.gz archive containing a complete CTF challenge environment, including:
