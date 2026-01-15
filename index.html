@@ -299,12 +299,82 @@
             background: var(--primary);
             color: white;
         }
+        .challenge-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+        .challenge-section h2 {
+            margin: 0 0 10px 0;
+            font-size: 1rem;
+            color: var(--text);
+        }
+        .challenge-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .challenge-select {
+            flex: 1;
+            min-width: 250px;
+            padding: 10px 12px;
+            font-size: 14px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface);
+            color: var(--text);
+            cursor: pointer;
+        }
+        .challenge-select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+        }
+        .challenge-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: var(--bg);
+            border-radius: 4px;
+            font-size: 0.85rem;
+            display: none;
+        }
+        .challenge-info.visible {
+            display: block;
+        }
+        .challenge-info .difficulty {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        .difficulty.easy { background: #22c55e; color: white; }
+        .difficulty.medium { background: #f59e0b; color: white; }
+        .difficulty.hard { background: #ef4444; color: white; }
+        .difficulty.very-hard { background: #7f1d1d; color: white; }
+        .download-btn {
+            background: #059669;
+        }
+        .download-btn:hover:not(:disabled) {
+            background: #047857;
+        }
         @media (max-width: 600px) {
             body {
                 padding: 10px;
             }
             .command-section {
                 flex-direction: column;
+            }
+            .challenge-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .challenge-select {
+                width: 100%;
             }
             #output {
                 min-height: 200px;
@@ -316,6 +386,25 @@
 <body>
     <h1>v86 Linux Emulator</h1>
     <p class="description">Run Linux commands in your browser using x86 emulation</p>
+
+    <div class="challenge-section">
+        <h2>🎯 CTF Challenge Selection</h2>
+        <div class="challenge-controls">
+            <select id="challenge-select" class="challenge-select">
+                <option value="">Select a CTF Challenge...</option>
+                <option value="challenge1-hidden-files">Challenge 1: Hidden Files Explorer</option>
+                <option value="challenge2-process-detective">Challenge 2: Process Detective</option>
+                <option value="challenge3-network-navigator">Challenge 3: Network Navigator</option>
+                <option value="challenge4-log-forensics">Challenge 4: Log File Forensics</option>
+                <option value="challenge5-permission-puzzle">Challenge 5: Permission Puzzle</option>
+                <option value="challenge6-archive-archaeology">Challenge 6: Archive Archaeology</option>
+                <option value="challenge7-script-debugger">Challenge 7: Script Debugger</option>
+                <option value="challenge8-intrusion-analysis">Challenge 8: System Intrusion Analysis</option>
+            </select>
+            <button id="download-challenge-btn" class="download-btn" disabled>Download Challenge</button>
+        </div>
+        <div id="challenge-info" class="challenge-info"></div>
+    </div>
 
     <div class="status-bar">
         <div class="status-indicator" id="status-indicator"></div>
@@ -427,6 +516,84 @@
             'ln', 'ln -s'
         ].sort();
 
+        // CTF Challenge metadata
+        const challenges = {
+            'challenge1-hidden-files': {
+                name: 'Hidden Files Explorer',
+                difficulty: 'easy',
+                description: 'Learn to find and examine hidden files in Linux systems.',
+                filename: 'challenge1-hidden-files.tar.gz'
+            },
+            'challenge2-process-detective': {
+                name: 'Process Detective',
+                difficulty: 'easy',
+                description: 'Master process management and monitoring commands.',
+                filename: 'challenge2-process-detective.tar.gz'
+            },
+            'challenge3-network-navigator': {
+                name: 'Network Navigator',
+                difficulty: 'medium',
+                description: 'Explore network configuration and troubleshooting.',
+                filename: 'challenge3-network-navigator.tar.gz'
+            },
+            'challenge4-log-forensics': {
+                name: 'Log File Forensics',
+                difficulty: 'medium',
+                description: 'Investigate system logs to uncover critical information.',
+                filename: 'challenge4-log-forensics.tar.gz'
+            },
+            'challenge5-permission-puzzle': {
+                name: 'Permission Puzzle',
+                difficulty: 'medium',
+                description: 'Navigate complex file permission scenarios.',
+                filename: 'challenge5-permission-puzzle.tar.gz'
+            },
+            'challenge6-archive-archaeology': {
+                name: 'Archive Archaeology',
+                difficulty: 'hard',
+                description: 'Extract and analyze nested archive files.',
+                filename: 'challenge6-archive-archaeology.tar.gz'
+            },
+            'challenge7-script-debugger': {
+                name: 'Script Debugger',
+                difficulty: 'hard',
+                description: 'Debug and fix broken shell scripts.',
+                filename: 'challenge7-script-debugger.tar.gz'
+            },
+            'challenge8-intrusion-analysis': {
+                name: 'System Intrusion Analysis',
+                difficulty: 'very hard',
+                description: 'Perform forensic analysis on a compromised system.',
+                filename: 'challenge8-intrusion-analysis.tar.gz'
+            }
+        };
+
+        // Function to get the base URL for GitHub Pages
+        function getBaseUrl() {
+            // Detect if we're on GitHub Pages or localhost
+            const hostname = window.location.hostname;
+            
+            // Common logic: get the base path by removing the filename from pathname
+            const basePath = window.location.pathname.replace(/\/[^/]*$/, '');
+            
+            // For localhost and GitHub Pages, use origin + base path
+            if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('github.io')) {
+                return window.location.origin + basePath;
+            }
+            
+            // Fallback to relative path for other environments
+            return '.';
+        }
+
+        // Function to get challenge download URL
+        function getChallengeUrl(challengeId) {
+            const challenge = challenges[challengeId];
+            if (!challenge) return null;
+            
+            const baseUrl = getBaseUrl();
+            return `${baseUrl}/disk-images/${challenge.filename}`;
+        }
+
         const statusIndicator = document.getElementById('status-indicator');
         const statusText = document.getElementById('status-text');
         const progressBar = document.getElementById('progress-bar');
@@ -442,6 +609,9 @@
         const toggleScreenBtn = document.getElementById('toggle-screen');
         const screenContainer = document.getElementById('screen-container');
         const autocompleteDropdown = document.getElementById('autocomplete-dropdown');
+        const challengeSelect = document.getElementById('challenge-select');
+        const downloadChallengeBtn = document.getElementById('download-challenge-btn');
+        const challengeInfo = document.getElementById('challenge-info');
 
         let emulator = null;
         let isReady = false;
@@ -913,6 +1083,76 @@
         restartBtn.addEventListener('click', function() {
             // Full page reload is the most reliable way to restart
             location.reload();
+        });
+
+        // Challenge selection handlers
+        challengeSelect.addEventListener('change', function() {
+            const selectedValue = this.value;
+            
+            if (!selectedValue) {
+                // No challenge selected
+                downloadChallengeBtn.disabled = true;
+                challengeInfo.classList.remove('visible');
+                challengeInfo.innerHTML = '';
+                return;
+            }
+
+            const challenge = challenges[selectedValue];
+            if (!challenge) return;
+
+            // Enable download button
+            downloadChallengeBtn.disabled = false;
+
+            // Show challenge info with proper HTML escaping
+            const difficultyClass = challenge.difficulty.replace(/\s+/g, '-');
+            
+            // Helper function to escape HTML
+            const escapeHtml = (text) => {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            };
+            
+            challengeInfo.innerHTML = `
+                <strong>${escapeHtml(challenge.name)}</strong>
+                <span class="difficulty ${difficultyClass}">${escapeHtml(challenge.difficulty.toUpperCase())}</span>
+                <br>
+                <span style="color: var(--text); margin-top: 5px; display: block;">${escapeHtml(challenge.description)}</span>
+                <br>
+                <small style="color: #666;">Download URL: <code style="background: var(--border); padding: 2px 4px; border-radius: 2px;">${escapeHtml(getChallengeUrl(selectedValue))}</code></small>
+            `;
+            challengeInfo.classList.add('visible');
+        });
+
+        downloadChallengeBtn.addEventListener('click', function() {
+            const selectedValue = challengeSelect.value;
+            if (!selectedValue) return;
+
+            const downloadUrl = getChallengeUrl(selectedValue);
+            if (!downloadUrl) {
+                alert('Error: Unable to generate download URL for this challenge.');
+                return;
+            }
+
+            try {
+                // Create temporary link and trigger download
+                const link = document.createElement('a');
+                link.href = downloadUrl;
+                link.download = challenges[selectedValue].filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                // Show feedback
+                const originalText = downloadChallengeBtn.textContent;
+                downloadChallengeBtn.textContent = '✓ Downloaded!';
+                setTimeout(() => {
+                    downloadChallengeBtn.textContent = originalText;
+                }, 2000);
+            } catch (error) {
+                console.error('Download error:', error);
+                alert('Error: Failed to initiate download. Please try again or download directly from the disk-images folder.');
+            }
         });
 
         // Start the emulator
