@@ -359,6 +359,48 @@
         .difficulty.medium { background: #f59e0b; color: white; }
         .difficulty.hard { background: #ef4444; color: white; }
         .difficulty.very-hard { background: #7f1d1d; color: white; }
+        .file-protocol-warning {
+            display: none;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            border-radius: 6px;
+            color: #92400e;
+        }
+        .file-protocol-warning.visible {
+            display: block;
+        }
+        .file-protocol-warning h3 {
+            margin: 0 0 10px 0;
+            font-size: 1rem;
+            color: #92400e;
+        }
+        .file-protocol-warning p {
+            margin: 5px 0;
+            font-size: 0.9rem;
+        }
+        .file-protocol-warning code {
+            background: #fde68a;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+        @media (prefers-color-scheme: dark) {
+            .file-protocol-warning {
+                background: #451a03;
+                border-color: #f59e0b;
+                color: #fbbf24;
+            }
+            .file-protocol-warning h3 {
+                color: #fbbf24;
+            }
+            .file-protocol-warning code {
+                background: #78350f;
+                color: #fde68a;
+            }
+        }
         .download-btn {
             background: #059669;
         }
@@ -389,6 +431,15 @@
 <body>
     <h1>v86 Linux Emulator</h1>
     <p class="description">Run Linux commands in your browser using x86 emulation</p>
+
+    <div id="file-protocol-warning" class="file-protocol-warning">
+        <h3>⚠️ Local Development Mode Detected</h3>
+        <p>You're opening this HTML file directly. To load CTF challenges, please run a local web server:</p>
+        <p><strong>Python:</strong> <code>python3 -m http.server 8000</code></p>
+        <p><strong>Node.js:</strong> <code>npx http-server -p 8000</code></p>
+        <p><strong>PHP:</strong> <code>php -S localhost:8000</code></p>
+        <p>Then visit: <code>http://localhost:8000</code></p>
+    </div>
 
     <div class="challenge-section">
         <h2>🎯 CTF Challenge Selection</h2>
@@ -469,9 +520,33 @@
         Boot time is typically 10-30 seconds depending on your connection and device. The main bottleneck is downloading the ~68MB kernel image.
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js" crossorigin="anonymous"></script>
     <script>
+        // Helper function to check if running on file:// protocol
+        function isFileProtocol() {
+            return window.location.protocol === 'file:';
+        }
+
+        // Error message for file:// protocol
+        const FILE_PROTOCOL_ERROR_MSG = `Cannot load challenges when opening HTML file directly.
+
+Please run a local web server instead:
+
+Option 1 - Python:
+  python3 -m http.server 8000
+  Then visit: http://localhost:8000
+
+Option 2 - Node.js:
+  npx http-server -p 8000
+  Then visit: http://localhost:8000
+
+Option 3 - PHP:
+  php -S localhost:8000
+  Then visit: http://localhost:8000`;
+
+        const FILE_PROTOCOL_TERMINAL_MSG = '\n[✗ Error: Cannot load challenges from file:// protocol]\n[Please run a local web server - see the alert for instructions]\n\n';
+
         // Common Linux commands for autocomplete
         const commonCommands = [
             'ls', 'ls -la', 'ls -l', 'ls -a',
@@ -585,6 +660,11 @@
                 return window.location.origin + basePath;
             }
             
+            // For file:// protocol, return null to trigger error handling
+            if (isFileProtocol()) {
+                return null;
+            }
+            
             // Fallback to relative path for other environments
             return '.';
         }
@@ -595,6 +675,9 @@
             if (!challenge) return null;
             
             const baseUrl = getBaseUrl();
+            if (baseUrl === null) {
+                return null; // file:// protocol detected
+            }
             return `${baseUrl}/disk-images/${challenge.filename}`;
         }
 
@@ -1229,7 +1312,13 @@
 
             const url = getChallengeUrl(challengeId);
             if (!url) {
-                alert('Error: Unable to generate URL for this challenge.');
+                // Check if we're on file:// protocol
+                if (isFileProtocol()) {
+                    alert(FILE_PROTOCOL_ERROR_MSG);
+                    appendOutput(FILE_PROTOCOL_TERMINAL_MSG);
+                } else {
+                    alert('Error: Unable to generate URL for this challenge.');
+                }
                 return;
             }
 
@@ -1449,6 +1538,14 @@
 
             loadChallengeIntoEmulator(selectedValue);
         });
+
+        // Check for file:// protocol and show warning
+        if (isFileProtocol()) {
+            const warningEl = document.getElementById('file-protocol-warning');
+            if (warningEl) {
+                warningEl.classList.add('visible');
+            }
+        }
 
         // Start the emulator
         initEmulator();

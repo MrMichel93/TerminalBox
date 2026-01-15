@@ -60,6 +60,33 @@ This repository is configured to be served via GitHub Pages:
    - Add a `CNAME` file with your custom domain
    - Configure DNS with your domain provider
 
+## 💻 Local Development
+
+To run TerminalBox locally and load CTF challenges, you need to serve the files through a local web server (not by opening the HTML file directly):
+
+### Using Python (recommended)
+```bash
+cd TerminalBox
+python3 -m http.server 8000
+```
+Then visit: `http://localhost:8000`
+
+### Using Node.js
+```bash
+cd TerminalBox
+npx http-server -p 8000
+```
+Then visit: `http://localhost:8000`
+
+### Using PHP
+```bash
+cd TerminalBox
+php -S localhost:8000
+```
+Then visit: `http://localhost:8000`
+
+**Important**: Opening `index.html` directly in your browser (using `file://` protocol) will prevent CTF challenges from loading due to browser security restrictions (CORS policy). You must use a local web server.
+
 ## 🛠️ Repository Structure
 
 ```
