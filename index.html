@@ -521,8 +521,26 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js" crossorigin="anonymous"></script>
     <script>
+        // Helper function to check if running on file:// protocol
+        function isFileProtocol() {
+            return window.location.protocol === 'file:';
+        }
+
+        // Error message for file:// protocol
+        const FILE_PROTOCOL_ERROR_MSG = 'Cannot load challenges when opening HTML file directly.\n\n' +
+                                        'Please run a local web server instead:\n\n' +
+                                        'Option 1 - Python:\n' +
+                                        '  python3 -m http.server 8000\n' +
+                                        '  Then visit: http://localhost:8000\n\n' +
+                                        'Option 2 - Node.js:\n' +
+                                        '  npx http-server -p 8000\n' +
+                                        '  Then visit: http://localhost:8000\n\n' +
+                                        'Option 3 - PHP:\n' +
+                                        '  php -S localhost:8000\n' +
+                                        '  Then visit: http://localhost:8000';
+
         // Common Linux commands for autocomplete
         const commonCommands = [
             'ls', 'ls -la', 'ls -l', 'ls -a',
@@ -627,7 +645,6 @@
         function getBaseUrl() {
             // Detect if we're on GitHub Pages or localhost
             const hostname = window.location.hostname;
-            const protocol = window.location.protocol;
             
             // Common logic: get the base path by removing the filename from pathname
             const basePath = window.location.pathname.replace(/\/[^/]*$/, '');
@@ -638,7 +655,7 @@
             }
             
             // For file:// protocol, return null to trigger error handling
-            if (protocol === 'file:') {
+            if (isFileProtocol()) {
                 return null;
             }
             
@@ -1290,19 +1307,8 @@
             const url = getChallengeUrl(challengeId);
             if (!url) {
                 // Check if we're on file:// protocol
-                if (window.location.protocol === 'file:') {
-                    const errorMsg = 'Cannot load challenges when opening HTML file directly.\n\n' +
-                                   'Please run a local web server instead:\n\n' +
-                                   'Option 1 - Python:\n' +
-                                   '  python3 -m http.server 8000\n' +
-                                   '  Then visit: http://localhost:8000\n\n' +
-                                   'Option 2 - Node.js:\n' +
-                                   '  npx http-server -p 8000\n' +
-                                   '  Then visit: http://localhost:8000\n\n' +
-                                   'Option 3 - PHP:\n' +
-                                   '  php -S localhost:8000\n' +
-                                   '  Then visit: http://localhost:8000';
-                    alert(errorMsg);
+                if (isFileProtocol()) {
+                    alert(FILE_PROTOCOL_ERROR_MSG);
                     appendOutput('\n[✗ Error: Cannot load challenges from file:// protocol]\n');
                     appendOutput('[Please run a local web server - see the alert for instructions]\n\n');
                 } else {
@@ -1529,7 +1535,7 @@
         });
 
         // Check for file:// protocol and show warning
-        if (window.location.protocol === 'file:') {
+        if (isFileProtocol()) {
             const warningEl = document.getElementById('file-protocol-warning');
             if (warningEl) {
                 warningEl.classList.add('visible');
