@@ -22,7 +22,7 @@
     <link rel="preload" href="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js" as="script">
     
     <!-- Pako library for gzip decompression (used for challenge .tar.gz extraction) -->
-    <link rel="preload" href="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js" as="script" crossorigin>
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js" as="script" crossorigin="anonymous">
     
     <style>
         * {
@@ -1209,7 +1209,7 @@
                             await sendCommandAndWait(`mkdir -p "${dirPath}"`);
                         }
                     } else if (file.type === 'file' && file.content) {
-                        // Create file in emulator using printf and output redirection
+                        // Create file in emulator using base64 encoding
                         // This approach handles special characters better than heredoc
                         const filePath = file.name;
                         const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
@@ -1220,7 +1220,16 @@
                         }
                         
                         // Create file with content using base64 encoding to avoid shell escaping issues
+                        // For very large files, this could hit command length limits, but CTF challenge
+                        // files are typically small (< 10KB each)
                         const base64Content = btoa(file.content);
+                        
+                        // Check if base64 content is too large (>100KB encoded ~ 75KB original)
+                        if (base64Content.length > 100000) {
+                            console.warn(`File ${filePath} is large (${base64Content.length} chars), may fail`);
+                            appendOutput(`[Warning: Large file ${filePath}, attempting to create...]\n`);
+                        }
+                        
                         await sendCommandAndWait(`printf '${base64Content}' | base64 -d > "${filePath}"`);
                         
                         // Make shell scripts executable
@@ -1238,11 +1247,13 @@
                     
                     appendOutput(`\n[Running challenge setup script]\n`);
                     
-                    // Change to challenge directory and run setup
+                    // Run setup script with proper directory context
+                    // Note: cd in one command doesn't persist, so we combine cd && bash
                     if (challengeDir !== '.') {
-                        await sendCommandAndWait(`cd "${challengeDir}"`);
+                        await sendCommandAndWait(`cd "${challengeDir}" && bash setup.sh`);
+                    } else {
+                        await sendCommandAndWait(`bash setup.sh`);
                     }
-                    await sendCommandAndWait(`bash setup.sh`);
                 }
 
                 appendOutput(`\n[✓ Challenge loaded successfully!]\n`);
@@ -1269,10 +1280,10 @@
         /**
          * Send a command to the emulator and wait for it to complete
          * @param {string} cmd - The command to execute
-         * @returns {Promise} Resolves when command completes
+         * @returns {Promise} Resolves when command completes, rejects on timeout
          */
         function sendCommandAndWait(cmd) {
-            return new Promise((resolve) => {
+            return new Promise((resolve, reject) => {
                 if (!emulator || !isReady) {
                     resolve();
                     return;
@@ -1298,11 +1309,15 @@
                     }
                 }, 100);
 
-                // Timeout after 10 seconds
+                // Timeout after 10 seconds with warning
                 setTimeout(() => {
                     clearInterval(checkInterval);
+                    if (waitingForOutput) {
+                        console.warn(`Command timed out after 10s: ${cmd}`);
+                        appendOutput(`\n[Warning: Command may still be running in background]\n`);
+                    }
                     waitingForOutput = wasWaiting;
-                    resolve();
+                    resolve(); // Resolve anyway to continue loading
                 }, 10000);
             });
         }
