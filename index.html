@@ -572,12 +572,16 @@
         function getBaseUrl() {
             // Detect if we're on GitHub Pages or localhost
             const hostname = window.location.hostname;
+            
+            // Common logic: get the base path by removing the filename from pathname
+            const basePath = window.location.pathname.replace(/\/[^/]*$/, '');
+            
             if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                // For local testing, use relative path
-                return window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '');
+                // For local testing, use origin + base path
+                return window.location.origin + basePath;
             } else if (hostname.includes('github.io')) {
-                // For GitHub Pages
-                return window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '');
+                // For GitHub Pages, use origin + base path
+                return window.location.origin + basePath;
             } else {
                 // Fallback to relative path
                 return '.';
@@ -1103,7 +1107,7 @@
             downloadChallengeBtn.disabled = false;
 
             // Show challenge info
-            const difficultyClass = challenge.difficulty.replace(' ', '-');
+            const difficultyClass = challenge.difficulty.replace(/\s+/g, '-');
             challengeInfo.innerHTML = `
                 <strong>${challenge.name}</strong>
                 <span class="difficulty ${difficultyClass}">${challenge.difficulty.toUpperCase()}</span>
@@ -1120,22 +1124,30 @@
             if (!selectedValue) return;
 
             const downloadUrl = getChallengeUrl(selectedValue);
-            if (!downloadUrl) return;
+            if (!downloadUrl) {
+                alert('Error: Unable to generate download URL for this challenge.');
+                return;
+            }
 
-            // Create temporary link and trigger download
-            const link = document.createElement('a');
-            link.href = downloadUrl;
-            link.download = challenges[selectedValue].filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            try {
+                // Create temporary link and trigger download
+                const link = document.createElement('a');
+                link.href = downloadUrl;
+                link.download = challenges[selectedValue].filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
 
-            // Show feedback
-            const originalText = downloadChallengeBtn.textContent;
-            downloadChallengeBtn.textContent = '✓ Downloaded!';
-            setTimeout(() => {
-                downloadChallengeBtn.textContent = originalText;
-            }, 2000);
+                // Show feedback
+                const originalText = downloadChallengeBtn.textContent;
+                downloadChallengeBtn.textContent = '✓ Downloaded!';
+                setTimeout(() => {
+                    downloadChallengeBtn.textContent = originalText;
+                }, 2000);
+            } catch (error) {
+                console.error('Download error:', error);
+                alert('Error: Failed to initiate download. Please try again or download directly from the disk-images folder.');
+            }
         });
 
         // Start the emulator
