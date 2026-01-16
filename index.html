@@ -405,6 +405,47 @@
         .download-btn:hover:not(:disabled) {
             background: #047857;
         }
+        .start-container {
+            text-align: center;
+            padding: 40px 20px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .start-btn {
+            font-size: 18px;
+            padding: 15px 40px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .start-btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        .start-btn:active {
+            transform: translateY(0);
+        }
+        .start-description {
+            margin-top: 15px;
+            color: #666;
+            font-size: 0.95rem;
+        }
+        @media (prefers-color-scheme: dark) {
+            .start-description {
+                color: #9ca3af;
+            }
+        }
+        .hidden {
+            display: none;
+        }
         @media (max-width: 600px) {
             body {
                 padding: 10px;
@@ -458,7 +499,12 @@
         <div id="challenge-info" class="challenge-info"></div>
     </div>
 
-    <div class="status-bar">
+    <div id="start-container" class="start-container">
+        <button id="start-emulator-btn" class="start-btn">Start Emulator</button>
+        <p class="start-description">Click to start the Linux emulator</p>
+    </div>
+
+    <div class="status-bar hidden" id="status-bar">
         <div class="status-indicator" id="status-indicator"></div>
         <span class="status-text" id="status-text">Initializing...</span>
         <div class="progress-bar" id="progress-bar">
@@ -702,6 +748,9 @@ Option 3 - PHP:
 
         const statusIndicator = document.getElementById('status-indicator');
         const statusText = document.getElementById('status-text');
+        const statusBar = document.getElementById('status-bar');
+        const startContainer = document.getElementById('start-container');
+        const startEmulatorBtn = document.getElementById('start-emulator-btn');
         const progressBar = document.getElementById('progress-bar');
         const progressFill = document.getElementById('progress-fill');
         const commandInput = document.getElementById('command-input');
@@ -1557,8 +1606,23 @@ Follow any instructions or hints provided in each challenge directory.`;
             }
         }
 
-        // Start the emulator
-        initEmulator();
+        // Start emulator button handler - ensures AudioContext is created after user gesture
+        startEmulatorBtn.addEventListener('click', function() {
+            // Prevent multiple initialization attempts
+            if (emulator !== null) {
+                return;
+            }
+            
+            // Disable button to prevent multiple clicks
+            startEmulatorBtn.disabled = true;
+            
+            // Hide start button and show status bar
+            startContainer.classList.add('hidden');
+            statusBar.classList.remove('hidden');
+            
+            // Initialize the emulator (this will create AudioContext with valid user gesture)
+            initEmulator();
+        });
     </script>
 </body>
 </html>
