@@ -1483,6 +1483,7 @@ Option 3 - PHP:
             outputTruncated = false;
             
             // Don't clear outputBuffer - it may contain partial prompt from previous command
+            // Clearing it could lose prompt detection data and cause missed command completions
             // Instead, just mark that we're waiting for new output
             waitingForOutput = true;
 
@@ -1498,10 +1499,10 @@ Option 3 - PHP:
                     isExecutingCommand = false;
                     resolve();
                     
-                    // Process next command in queue
+                    // Process next command in queue after brief delay
                     setTimeout(() => processCommandQueue(), 100);
                 }
-            }, 50); // Check more frequently (50ms instead of 100ms)
+            }, 100); // Poll every 100ms for command completion
 
             // Timeout handler with more aggressive cleanup
             setTimeout(() => {
@@ -1525,7 +1526,8 @@ Option 3 - PHP:
                     
                     isExecutingCommand = false;
                     
-                    // Continue with next command after a brief pause
+                    // Wait 200ms before processing next command to allow system recovery
+                    // after timeout (gives emulator time to process Ctrl+C and stabilize)
                     setTimeout(() => processCommandQueue(), 200);
                     
                     // Resolve (not reject) to allow loading to continue
