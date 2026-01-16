@@ -710,10 +710,13 @@ Option 3 - PHP:
         let timerStart = 0;
         let outputTruncated = false;
         let drainingOutput = false; // When true, discard output until we see a prompt
-        // Prompt ends with "% " - could be "~% ", "~/dir% ", "/path% ", etc.
-        const promptPattern = /% $/;
+        // Prompt patterns - match various shell prompts (ash/sh: "$ ", csh/tcsh: "% ", root: "# ")
+        // Also handles prompts with path prefixes like "~% ", "/home/user$ ", etc.
+        const promptPattern = /[$%#>]\s*$/;
         const maxOutputSize = 50000; // Truncate output after 50KB
         let sessionOutput = ''; // Store complete terminal session for saving
+        let commandQueue = []; // Queue for commands waiting to execute
+        let isExecutingCommand = false; // Flag to prevent concurrent command execution
 
         // Autocomplete state
         let selectedIndex = -1;
@@ -991,10 +994,11 @@ Option 3 - PHP:
                     // In draining mode, just watch for prompt to know system is ready again
                     if (drainingOutput) {
                         outputBuffer += char;
-                        // Keep buffer small while draining
-                        if (outputBuffer.length > 20) {
-                            outputBuffer = outputBuffer.slice(-20);
+                        // Keep buffer reasonably sized while draining (50 chars to catch full prompts)
+                        if (outputBuffer.length > 50) {
+                            outputBuffer = outputBuffer.slice(-50);
                         }
+                        // Check the buffer for prompt pattern
                         if (promptPattern.test(outputBuffer)) {
                             drainingOutput = false;
                             outputBuffer = '';
@@ -1016,9 +1020,11 @@ Option 3 - PHP:
                         }
 
                         // Wait for shell prompt to reappear (command completed)
-                        // Prompt can be "~% ", "~/subdir% ", "/path% ", etc.
-                        // Check the full buffer for prompt even if truncated
-                        if (promptPattern.test(outputBuffer)) {
+                        // Prompt can be various formats: "$ ", "% ", "# ", "> " with optional paths
+                        // Examples: "~% ", "~/subdir$ ", "/path# ", etc.
+                        // Check the last ~50 chars of buffer for prompt pattern
+                        const lastChars = outputBuffer.slice(-50);
+                        if (promptPattern.test(lastChars)) {
                             waitingForOutput = false;
 
                             // Parse output: skip echoed command, capture until prompt
@@ -1050,7 +1056,9 @@ Option 3 - PHP:
                     }
 
                     // Detect when boot is complete (shell prompt appears)
-                    if (!isReady && promptPattern.test(outputBuffer)) {
+                    // Check last 50 chars for better reliability
+                    const lastChars = outputBuffer.slice(-50);
+                    if (!isReady && promptPattern.test(lastChars)) {
                         isReady = true;
                         updateProgress(100, 'Linux is ready');
                         updateStatus('ready', 'Linux is ready');
@@ -1437,9 +1445,10 @@ Option 3 - PHP:
         /**
          * Send a command to the emulator and wait for it to complete
          * @param {string} cmd - The command to execute
-         * @returns {Promise} Resolves when command completes, rejects if emulator not ready
+         * @param {number} timeout - Optional timeout in milliseconds (default: 30000)
+         * @returns {Promise} Resolves when command completes, rejects if emulator not ready or timeout
          */
-        function sendCommandAndWait(cmd) {
+        function sendCommandAndWait(cmd, timeout = 30000) {
             return new Promise((resolve, reject) => {
                 if (!emulator || !isReady) {
                     // Reject if emulator is not ready to prevent race conditions
@@ -1447,40 +1456,84 @@ Option 3 - PHP:
                     return;
                 }
 
-                // Store original state
-                const wasWaiting = waitingForOutput;
+                // Queue the command to prevent race conditions
+                commandQueue.push({ cmd, resolve, reject, timeout });
                 
-                currentCommand = cmd;
-                commandOutput = '';
-                outputTruncated = false;
-                waitingForOutput = true;
-                outputBuffer = '';
+                // If not currently executing, process the queue
+                if (!isExecutingCommand) {
+                    processCommandQueue();
+                }
+            });
+        }
 
-                // Send command
-                emulator.serial0_send(cmd + '\n');
+        /**
+         * Process queued commands one at a time to prevent race conditions
+         */
+        function processCommandQueue() {
+            if (commandQueue.length === 0 || isExecutingCommand) {
+                return;
+            }
 
-                // Poll for completion
-                const checkInterval = setInterval(() => {
-                    if (!waitingForOutput) {
-                        clearInterval(checkInterval);
-                        resolve();
-                    }
-                }, 100);
+            isExecutingCommand = true;
+            const { cmd, resolve, reject, timeout } = commandQueue.shift();
 
-                // Timeout after 10 seconds with warning
-                setTimeout(() => {
-                    // Always clear the interval to prevent memory leaks
+            // Set up command execution state
+            currentCommand = cmd;
+            commandOutput = '';
+            outputTruncated = false;
+            
+            // Don't clear outputBuffer - it may contain partial prompt from previous command
+            // Clearing it could lose prompt detection data and cause missed command completions
+            // Instead, just mark that we're waiting for new output
+            waitingForOutput = true;
+
+            // Send command
+            emulator.serial0_send(cmd + '\n');
+
+            // Set up completion handler
+            let completed = false;
+            const checkInterval = setInterval(() => {
+                if (!waitingForOutput && !completed) {
+                    completed = true;
+                    clearInterval(checkInterval);
+                    isExecutingCommand = false;
+                    resolve();
+                    
+                    // Process next command in queue after brief delay
+                    setTimeout(() => processCommandQueue(), 100);
+                }
+            }, 100); // Poll every 100ms for command completion
+
+            // Timeout handler with more aggressive cleanup
+            setTimeout(() => {
+                if (!completed) {
+                    completed = true;
                     clearInterval(checkInterval);
                     
                     if (waitingForOutput) {
-                        console.warn(`Command timed out after 10s: ${cmd}`);
-                        appendOutput(`\n[Warning: Command may still be running in background]\n`);
-                        waitingForOutput = wasWaiting;
+                        console.warn(`Command timed out after ${timeout/1000}s: ${cmd}`);
+                        
+                        // Force reset state to prevent cascade failures
+                        waitingForOutput = false;
+                        outputBuffer = '';
+                        commandOutput = '';
+                        
+                        // Send Ctrl+C to try to stop hung command
+                        emulator.serial0_send('\x03');
+                        
+                        appendOutput(`\n[Command timeout - sent cancel signal]\n`);
                     }
                     
-                    resolve(); // Resolve anyway to continue loading
-                }, 10000);
-            });
+                    isExecutingCommand = false;
+                    
+                    // Wait 200ms before processing next command to allow system recovery
+                    // after timeout (gives emulator time to process Ctrl+C and stabilize)
+                    setTimeout(() => processCommandQueue(), 200);
+                    
+                    // Resolve (not reject) to allow loading to continue
+                    resolve();
+                }
+            }, timeout);
         }
 
         // =============================================================================
