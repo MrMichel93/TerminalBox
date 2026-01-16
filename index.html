@@ -992,12 +992,11 @@ Option 3 - PHP:
                 
                 // Determine the directory path for this file
                 const filePathParts = filePath.split('/');
-                const fileName = filePathParts[filePathParts.length - 1];
                 const dirPath = filePathParts.slice(0, -1).join('/');
                 
                 // Create any necessary subdirectories
                 if (dirPath) {
-                    await sendCommandAndWait(`mkdir -p ${escapeShell(challengeId + '/' + dirPath)}`);
+                    await sendCommandAndWait(`mkdir -p ${escapeShell(`${challengeId}/${dirPath}`)}`);
                 }
                 
                 // Write the file content
