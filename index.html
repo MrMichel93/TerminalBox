@@ -505,7 +505,7 @@
         <a href="https://github.com/copy/v86" target="_blank">v86</a>, an x86 emulator written in JavaScript/WebAssembly.
         <br><br>
         <strong>CTF Challenges:</strong> Select a challenge from the dropdown above to load it into the emulator.
-        Each challenge is loaded directly from the ctf-collection folder with no downloads required.
+        Challenges are fetched directly from the ctf-collection folder for fast, streamlined loading.
         <br><br>
         <strong>Performance Optimizations:</strong>
         <ul style="margin: 8px 0 0 0; padding-left: 20px;">
@@ -1254,6 +1254,20 @@ Follow any instructions or hints provided in each challenge directory.`;
         }
 
         /**
+         * Helper function to fetch a challenge file
+         * @param {string} url - The URL to fetch
+         * @param {string} description - Description of the file (for error messages)
+         * @returns {Promise<string>} The file content
+         */
+        async function fetchChallengeFile(url, description) {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch ${description}: ${response.statusText}`);
+            }
+            return await response.text();
+        }
+
+        /**
          * Load a challenge into the emulator by fetching files from ctf-collection
          * @param {string} challengeId - The challenge identifier
          */
@@ -1287,21 +1301,9 @@ Follow any instructions or hints provided in each challenge directory.`;
                 loadChallengeBtn.textContent = 'Loading...';
                 appendOutput(`\n[Loading challenge: ${challenge.name}]\n`);
 
-                // Fetch README.md
-                const readmeUrl = `${baseUrl}/README.md`;
-                const readmeResponse = await fetch(readmeUrl);
-                if (!readmeResponse.ok) {
-                    throw new Error(`Failed to fetch README: ${readmeResponse.statusText}`);
-                }
-                const readmeContent = await readmeResponse.text();
-
-                // Fetch setup.sh
-                const setupUrl = `${baseUrl}/setup.sh`;
-                const setupResponse = await fetch(setupUrl);
-                if (!setupResponse.ok) {
-                    throw new Error(`Failed to fetch setup script: ${setupResponse.statusText}`);
-                }
-                const setupContent = await setupResponse.text();
+                // Fetch challenge files using helper function
+                const readmeContent = await fetchChallengeFile(`${baseUrl}/README.md`, 'README');
+                const setupContent = await fetchChallengeFile(`${baseUrl}/setup.sh`, 'setup script');
 
                 appendOutput(`[Fetched challenge files from ctf-collection]\n`);
 
