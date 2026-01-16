@@ -944,17 +944,8 @@ Follow any instructions or hints provided in each challenge directory.`;
                 const base64Readme = safeBase64Encode(readmeContent);
                 await sendCommandAndWait(`echo -n ${escapeShell(base64Readme)} | base64 -d > README.md`);
 
-                // Create challenge directories
-                const challengeDirs = [
-                    'challenge1-hidden-files',
-                    'challenge2-process-detective',
-                    'challenge3-network-navigator',
-                    'challenge4-log-forensics',
-                    'challenge5-permission-puzzle',
-                    'challenge6-archive-archaeology',
-                    'challenge7-script-debugger',
-                    'challenge8-intrusion-analysis'
-                ];
+                // Create challenge directories - derive from challenges object to maintain single source of truth
+                const challengeDirs = Object.keys(challenges);
 
                 // Create all challenge directories
                 for (const dir of challengeDirs) {
@@ -1089,20 +1080,23 @@ Follow any instructions or hints provided in each challenge directory.`;
                         updateStatus('booting', 'Setting up CTF environment...');
                         setOutput('Linux booted successfully. Initializing CTF challenges...\n\n');
                         
+                        // Helper function to enable UI after boot
+                        const enableUI = () => {
+                            commandInput.disabled = false;
+                            runBtn.disabled = false;
+                            commandInput.focus();
+                        };
+                        
                         // Initialize the CTF collection filesystem
                         initializeCTFFilesystem().then(() => {
                             updateStatus('ready', 'Linux is ready');
-                            commandInput.disabled = false;
-                            runBtn.disabled = false;
                             appendOutput('[✓ CTF environment ready! Type "ls" to see available challenges]\n\n');
-                            commandInput.focus();
+                            enableUI();
                         }).catch(error => {
                             console.error('Failed to initialize CTF filesystem:', error);
                             updateStatus('ready', 'Linux is ready (CTF setup failed)');
-                            commandInput.disabled = false;
-                            runBtn.disabled = false;
                             appendOutput('[✗ Warning: CTF setup failed, but emulator is ready]\n\n');
-                            commandInput.focus();
+                            enableUI();
                         });
                     }
                 });
