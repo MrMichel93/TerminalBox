@@ -1,20 +1,49 @@
 # CTF Collection Filesystem Integration
 
 ## Overview
-This document describes the changes made to integrate the `ctf-collection` folder as the base filesystem for the Linux emulator.
+This document describes how the `ctf-collection` folder is integrated as the base filesystem for the Linux emulator. All challenge files are pre-created in the repository and loaded directly into the emulator without executing any shell scripts.
 
-## Changes Made
+## Current Implementation
 
-### 1. Initialization of CTF Filesystem
+### 1. File-Based Loading System
+- **Function**: `setupChallengeFiles(challengeId)`
+- **Location**: `index.html`
+- **Purpose**: Loads pre-existing files from the ctf-collection folder into the emulator
+- **Behavior**:
+  - Uses a manifest (`challengeFiles` object) that lists all files for each challenge
+  - Fetches each file directly from `ctf-collection/{challenge}/{filepath}`
+  - Recreates the directory structure in the emulator
+  - Sets executable permissions where needed
+  - **Does NOT execute any shell scripts**
+
+### 2. Challenge File Manifests
+- **Object**: `challengeFiles`
+- **Location**: `index.html` (defined after `challenges` object)
+- **Purpose**: Lists all files that should be loaded for each challenge
+- **Structure**:
+  ```javascript
+  'challenge-name': [
+    { path: 'file/path', executable: true/false },
+    ...
+  ]
+  ```
+- **Benefits**:
+  - No shell script execution required
+  - Clear visibility of what files are loaded
+  - Supports nested directory structures
+  - Handles executable permissions
+
+### 3. Initialization of CTF Filesystem
 - **Function**: `initializeCTFFilesystem()`
-- **Location**: `index.html` (around line 948)
-- **Purpose**: Automatically creates the CTF directory structure when the emulator boots
+- **Location**: `index.html`
+- **Purpose**: Automatically loads all challenges when the emulator boots
 - **Behavior**:
   - Creates a `README.md` file in the root directory with CTF instructions
-  - Creates all 8 challenge directories (challenge1-hidden-files through challenge8-intrusion-analysis)
+  - Loads all challenges sequentially using `setupChallengeFiles()`
   - Executes automatically after the Linux kernel boots and shell prompt appears
+  - Shows success message when complete
 
-### 2. Modified Emulator Boot Sequence
+### 4. Modified Emulator Boot Sequence
 - **Location**: Serial output listener in `initEmulator()` function
 - **Change**: When the emulator detects the shell prompt (boot complete), it now:
   1. Sets status to "Setting up CTF environment..."
@@ -22,32 +51,16 @@ This document describes the changes made to integrate the `ctf-collection` folde
   3. Updates status to "Linux is ready" when complete
   4. Shows success message: `[✓ CTF environment ready! Type "ls" to see available challenges]`
 
-### 3. Challenge Loading System Updated
-- **Old System**: Downloaded `.tar.gz` files from `disk-images` folder, decompressed using pako library, parsed tar format
-- **New System**: Fetches files directly from `ctf-collection/{challenge}/` folder via HTTP
-- **Function**: `loadChallengeIntoEmulator(challengeId)` (rewritten)
-- **New Behavior**:
-  1. Fetches `README.md` from `ctf-collection/{challengeId}/README.md`
-  2. Fetches `setup.sh` from `ctf-collection/{challengeId}/setup.sh`
-  3. Creates the challenge directory in the emulator
-  4. Writes both files to the emulator using base64 encoding
-  5. Makes setup.sh executable
-  6. Runs the setup script to initialize the challenge environment
+### 5. Removed Components
+- **Setup Scripts**: No longer fetch or execute setup.sh files
+- **Script Execution**: All challenge files are pre-created in the repository
+- **Dynamic Generation**: Challenges are loaded as-is from ctf-collection folder
 
-### 4. Removed Dependencies
-- **Pako Library**: Removed preload link and script tag (no longer needed for tar.gz decompression)
-- **parseTar Function**: Removed entirely (no longer needed)
-- **sanitizePath Function**: Removed (no longer processing tar archives with potentially unsafe paths)
-- **Challenge Metadata**: Removed `filename` field from challenge definitions (no longer using .tar.gz files)
-
-### 5. Helper Functions Retained
+### 6. Helper Functions
 - **escapeShell()**: Safely escapes strings for shell commands
 - **safeBase64Encode()**: Encodes content to base64, handling UTF-8 characters
-- Both functions are still used for secure file creation in the emulator
-
-### 6. Updated UI References
-- Info section no longer references `disk-images` folder
-- Info section now states challenges are loaded directly from ctf-collection with no downloads
+- **fetchChallengeFile()**: Fetches a file from the ctf-collection folder
+- All functions are used for secure file transfer to the emulator
 
 ## Expected Behavior
 
@@ -57,7 +70,7 @@ When the user opens the page and the emulator boots:
 2. Shell prompt appears
 3. CTF filesystem initialization begins automatically
 4. A `README.md` file is created in the root with instructions
-5. 8 challenge directories are created (empty, ready to receive challenge content)
+5. All challenges are loaded with their pre-created files
 6. User sees: `[✓ CTF environment ready! Type "ls" to see available challenges]`
 
 ### When User Runs `ls`
@@ -65,45 +78,54 @@ The user should see:
 ```
 README.md
 challenge1-hidden-files
-challenge2-process-detective
-challenge3-network-navigator
 challenge4-log-forensics
-challenge5-permission-puzzle
-challenge6-archive-archaeology
 challenge7-script-debugger
 challenge8-intrusion-analysis
 ```
 
-### When User Loads a Challenge
-1. User selects a challenge from the dropdown
-2. Clicks "Load Challenge" button
-3. System fetches README.md and setup.sh from ctf-collection folder
-4. Creates the files in the corresponding challenge directory
-5. Runs the setup script to initialize the challenge environment
-6. User can navigate to the challenge directory and start solving
+### When User Navigates to a Challenge
+1. User runs: `cd challenge1-hidden-files`
+2. User runs: `ls` to see challenge files
+3. User runs: `cat README.md` to read instructions
+4. All challenge files are already present and ready to use
 
 ## Benefits
 
-1. **Faster Loading**: No need to download and decompress large .tar.gz files
-2. **Simpler Architecture**: Direct file fetching instead of tar.gz processing
-3. **No Build Step**: Works directly with the repository structure
-4. **GitHub Pages Compatible**: No server-side processing required
-5. **Easier Maintenance**: Challenge files can be edited directly in the repository
+1. **Security**: No shell scripts are executed during loading
+2. **Transparency**: All files are visible in the repository
+3. **Simplicity**: Direct file copying without script execution
+4. **Reliability**: No dynamic file generation means consistent behavior
+5. **GitHub Pages Compatible**: Works with static file hosting
+6. **Easier Maintenance**: Challenge files can be edited directly in the repository
 
 ## File Structure
 
 ```
 TerminalBox/
-├── index.html (modified)
+├── index.html (main application)
 ├── ctf-collection/
 │   ├── challenge1-hidden-files/
 │   │   ├── README.md
-│   │   └── setup.sh
-│   ├── challenge2-process-detective/
+│   │   └── mystery_dir/
+│   │       ├── .cache
+│   │       ├── .config/settings
+│   │       ├── .secrets/.clue
+│   │       ├── .secrets/.hidden_treasure
+│   │       └── ... (more files)
+│   ├── challenge4-log-forensics/
 │   │   ├── README.md
-│   │   └── setup.sh
-│   └── ... (6 more challenges)
-└── disk-images/ (no longer used, can be removed)
+│   │   └── access.log
+│   ├── challenge7-script-debugger/
+│   │   ├── README.md
+│   │   ├── broken_script.sh
+│   │   └── .solution_script.sh
+│   └── challenge8-intrusion-analysis/
+│       ├── README.md
+│       └── incident/
+│           ├── .bash_history
+│           ├── logs/auth.log
+│           └── ... (more files)
+└── README.md
 ```
 
 ## Testing
@@ -113,14 +135,15 @@ To test the integration:
 2. Open http://localhost:8000 in a browser
 3. Wait for the emulator to boot
 4. Type `ls` in the command input and click "Run"
-5. Verify that README.md and all 8 challenge directories are listed
-6. Type `cat README.md` to verify the content
-7. Select a challenge from the dropdown and click "Load Challenge"
-8. Verify that the challenge loads successfully
+5. Verify that README.md and all challenge directories are listed
+6. Navigate to a challenge: `cd challenge1-hidden-files`
+7. Run `ls -la` to see all files including hidden ones
+8. Verify that all challenge files are present
 
-## Future Improvements
+## Security Notes
 
-1. Could add a progress indicator for challenge loading
-2. Could cache loaded challenges to avoid re-fetching
-3. Could add a "Reset Challenge" button to restore original state
-4. Could implement lazy loading of challenge descriptions from the repository
+- No shell scripts (setup.sh) are executed during challenge loading
+- All files are fetched via HTTP and written directly to the emulator filesystem
+- File contents are base64-encoded for safe transfer
+- Shell command parameters are properly escaped using `escapeShell()`
+- Only pre-existing files from ctf-collection are loaded

@@ -90,9 +90,11 @@ TerminalBox/
 ├── ctf-collection/         # CTF challenge source files
 │   ├── challenge1-hidden-files/
 │   │   ├── README.md
-│   │   └── setup.sh
-│   ├── challenge2-process-detective/
-│   ├── ... (6 more challenges)
+│   │   └── mystery_dir/    # Challenge files
+│   ├── challenge4-log-forensics/
+│   │   ├── README.md
+│   │   └── access.log      # Challenge files
+│   ├── ... (more challenges with pre-created files)
 ├── .nojekyll              # Prevents Jekyll processing for GitHub Pages
 ├── OPTIMIZATIONS.md       # Performance optimization documentation
 └── README.md              # This file
