@@ -26,7 +26,7 @@ This document details the optimizations implemented to improve the startup perfo
 <link rel="preload" href="https://cdn.jsdelivr.net/gh/copy/v86@master/bios/seabios.bin" as="fetch" crossorigin>
 <link rel="preload" href="https://cdn.jsdelivr.net/gh/copy/v86@master/bios/vgabios.bin" as="fetch" crossorigin>
 <link rel="preload" href="https://static.simonwillison.net/static/cors-allow/2026/buildroot-bzimage68.bin" as="fetch" crossorigin>
-<link rel="preload" href="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js" as="script">
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js" as="script" crossorigin="anonymous">
 ```
 
 **Benefits:**
