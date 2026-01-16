@@ -453,7 +453,7 @@
                 <option value="challenge7-script-debugger">Challenge 7: Script Debugger</option>
                 <option value="challenge8-intrusion-analysis">Challenge 8: System Intrusion Analysis</option>
             </select>
-            <button id="load-challenge-btn" class="download-btn" disabled>Load Challenge</button>
+            <button id="load-challenge-btn" class="download-btn" disabled>Show Info</button>
         </div>
         <div id="challenge-info" class="challenge-info"></div>
     </div>
@@ -504,8 +504,8 @@
         <strong>About:</strong> This tool runs a minimal Linux distribution (Buildroot) inside your browser using
         <a href="https://github.com/copy/v86" target="_blank">v86</a>, an x86 emulator written in JavaScript/WebAssembly.
         <br><br>
-        <strong>CTF Challenges:</strong> Select a challenge from the dropdown above to load it into the emulator.
-        Challenges are fetched directly from the ctf-collection folder for fast, streamlined loading.
+        <strong>CTF Challenges:</strong> All challenges are automatically loaded when the emulator boots.
+        Run 'ls' in the root directory to see challenge folders, then 'cd' into any challenge and run 'ls' again to see the challenge files.
         <br><br>
         <strong>Performance Optimizations:</strong>
         <ul style="margin: 8px 0 0 0; padding-left: 20px;">
@@ -929,6 +929,37 @@ Option 3 - PHP:
         }
 
         /**
+         * Load challenge files into a specific directory
+         * @param {string} challengeId - The challenge identifier
+         * @returns {Promise} Resolves when challenge is loaded
+         */
+        async function setupChallengeFiles(challengeId) {
+            const baseUrl = getChallengeBaseUrl(challengeId);
+            if (!baseUrl) {
+                throw new Error('Cannot load challenges from file:// protocol or invalid base URL');
+            }
+
+            // Fetch challenge files
+            const readmeContent = await fetchChallengeFile(`${baseUrl}/README.md`, 'challenge README.md');
+            const setupContent = await fetchChallengeFile(`${baseUrl}/setup.sh`, 'challenge setup.sh');
+
+            // Create the challenge directory
+            await sendCommandAndWait(`mkdir -p ${escapeShell(challengeId)}`);
+
+            // Create README.md file
+            const base64Readme = safeBase64Encode(readmeContent);
+            await sendCommandAndWait(`echo -n ${escapeShell(base64Readme)} | base64 -d > ${escapeShell(challengeId)}/README.md`);
+
+            // Create setup.sh file
+            const base64Setup = safeBase64Encode(setupContent);
+            await sendCommandAndWait(`echo -n ${escapeShell(base64Setup)} | base64 -d > ${escapeShell(challengeId)}/setup.sh`);
+            await sendCommandAndWait(`chmod +x ${escapeShell(challengeId)}/setup.sh`);
+
+            // Run setup script to populate the challenge directory
+            await sendCommandAndWait(`cd ${escapeShell(challengeId)} && bash setup.sh`);
+        }
+
+        /**
          * Initialize the CTF filesystem by creating directories and README
          */
         async function initializeCTFFilesystem() {
@@ -944,13 +975,29 @@ Follow any instructions or hints provided in each challenge directory.`;
                 const base64Readme = safeBase64Encode(readmeContent);
                 await sendCommandAndWait(`echo -n ${escapeShell(base64Readme)} | base64 -d > README.md`);
 
-                // Create challenge directories - derive from challenges object to ensure
-                // the initialized directories match exactly the available challenges in the dropdown
+                // Load all challenges automatically so directories are pre-populated
+                // Note: Sequential loading is required because setup scripts execute in the emulator
+                // via a command queue that prevents race conditions
                 const challengeDirs = Object.keys(challenges);
+                const loadedChallenges = [];
+                const failedChallenges = [];
 
-                // Create all challenge directories
                 for (const dir of challengeDirs) {
-                    await sendCommandAndWait(`mkdir -p ${escapeShell(dir)}`);
+                    try {
+                        await setupChallengeFiles(dir);
+                        loadedChallenges.push(dir);
+                    } catch (error) {
+                        console.error(`Failed to load challenge ${dir}:`, error);
+                        console.error('Possible causes: network issues, missing files in ctf-collection, or file:// protocol');
+                        failedChallenges.push({ name: dir, error: error.message });
+                        // Continue loading other challenges even if one fails
+                    }
+                }
+
+                // Log summary of what was loaded
+                console.log(`Loaded ${loadedChallenges.length}/${challengeDirs.length} challenges`);
+                if (failedChallenges.length > 0) {
+                    console.warn('Failed to load challenges:', failedChallenges);
                 }
 
                 return true;
@@ -1269,7 +1316,9 @@ Follow any instructions or hints provided in each challenge directory.`;
         }
 
         /**
-         * Load a challenge into the emulator by fetching files from ctf-collection
+         * Display information about a challenge
+         * Note: All challenges are pre-loaded during boot. This function provides
+         * helpful navigation information to users.
          * @param {string} challengeId - The challenge identifier
          */
         async function loadChallengeIntoEmulator(challengeId) {
@@ -1284,67 +1333,18 @@ Follow any instructions or hints provided in each challenge directory.`;
                 return;
             }
 
-            const baseUrl = getChallengeBaseUrl(challengeId);
-            if (!baseUrl) {
-                // Check if we're on file:// protocol
-                if (isFileProtocol()) {
-                    alert(FILE_PROTOCOL_ERROR_MSG);
-                    appendOutput(FILE_PROTOCOL_TERMINAL_MSG);
-                } else {
-                    alert('Error: Unable to generate URL for this challenge.');
-                }
-                return;
-            }
-
-            try {
-                // Update UI to show loading state
-                loadChallengeBtn.disabled = true;
-                loadChallengeBtn.textContent = 'Loading...';
-                appendOutput(`\n[Loading challenge: ${challenge.name}]\n`);
-
-                // Fetch challenge files using helper function
-                const readmeContent = await fetchChallengeFile(`${baseUrl}/README.md`, 'challenge README.md');
-                const setupContent = await fetchChallengeFile(`${baseUrl}/setup.sh`, 'challenge setup.sh');
-
-                appendOutput(`[Fetched challenge files from ctf-collection]\n`);
-
-                // Create the challenge directory - redundant safety check as initializeCTFFilesystem() 
-                // already created it, but ensures directory exists if initialization had issues
-                await sendCommandAndWait(`mkdir -p ${escapeShell(challengeId)}`);
-
-                // Create README.md file
-                const base64Readme = safeBase64Encode(readmeContent);
-                await sendCommandAndWait(`echo -n ${escapeShell(base64Readme)} | base64 -d > ${escapeShell(challengeId)}/README.md`);
-
-                // Create setup.sh file
-                const base64Setup = safeBase64Encode(setupContent);
-                await sendCommandAndWait(`echo -n ${escapeShell(base64Setup)} | base64 -d > ${escapeShell(challengeId)}/setup.sh`);
-                await sendCommandAndWait(`chmod +x ${escapeShell(challengeId)}/setup.sh`);
-
-                appendOutput(`\n[Running challenge setup script]\n`);
-
-                // Run setup script
-                await sendCommandAndWait(`cd ${escapeShell(challengeId)} && bash setup.sh`);
-
-                appendOutput(`\n[✓ Challenge loaded successfully!]\n`);
-                appendOutput(`[Navigate to ${challengeId} directory with: cd ${challengeId}]\n\n`);
-                
-                // Update button state
-                loadChallengeBtn.textContent = '✓ Loaded!';
-                setTimeout(() => {
-                    loadChallengeBtn.textContent = 'Load Challenge';
-                    loadChallengeBtn.disabled = false;
-                }, 2000);
-
-            } catch (error) {
-                console.error('Error loading challenge:', error);
-                appendOutput(`\n[✗ Error loading challenge: ${error.message}]\n\n`);
-                alert(`Failed to load challenge: ${error.message}`);
-                
-                // Reset button state
-                loadChallengeBtn.textContent = 'Load Challenge';
-                loadChallengeBtn.disabled = false;
-            }
+            // Simply inform the user about the challenge and how to access it
+            appendOutput(`\n[Challenge: ${challenge.name}]\n`);
+            appendOutput(`[All challenges were loaded during boot]\n`);
+            appendOutput(`[Navigate to the directory: cd ${challengeId}]\n`);
+            appendOutput(`[List files: ls]\n`);
+            appendOutput(`[Read the instructions: cat README.md]\n\n`);
+            
+            // Update button state
+            loadChallengeBtn.textContent = '✓ Ready!';
+            setTimeout(() => {
+                loadChallengeBtn.textContent = 'Show Info';
+            }, 2000);
         }
 
         /**
@@ -1444,10 +1444,10 @@ Follow any instructions or hints provided in each challenge directory.`;
         // =============================================================================
         // Challenge Selection Event Handlers
         // =============================================================================
-        // These handlers manage the CTF challenge dropdown and load button.
-        // When a challenge is selected, the UI is updated with challenge info.
-        // When "Load Challenge" is clicked, the challenge is fetched and loaded
-        // into the emulator dynamically without any local downloads.
+        // These handlers manage the CTF challenge dropdown and info button.
+        // When a challenge is selected, the UI is updated with challenge details.
+        // When "Show Info" is clicked, navigation instructions are displayed in the terminal.
+        // All challenges are pre-loaded during boot, so this just provides user guidance.
         // =============================================================================
 
         // Challenge selection handlers
@@ -1484,7 +1484,7 @@ Follow any instructions or hints provided in each challenge directory.`;
                 <br>
                 <span style="color: var(--text); margin-top: 5px; display: block;">${escapeHtml(challenge.description)}</span>
                 <br>
-                <small style="color: #666;">This challenge will be loaded directly into the emulator</small>
+                <small style="color: #666;">This challenge is already loaded. Navigate to it with: cd ${escapeHtml(selectedValue)}</small>
             `;
             challengeInfo.classList.add('visible');
         });
