@@ -944,7 +944,8 @@ Follow any instructions or hints provided in each challenge directory.`;
                 const base64Readme = safeBase64Encode(readmeContent);
                 await sendCommandAndWait(`echo -n ${escapeShell(base64Readme)} | base64 -d > README.md`);
 
-                // Create challenge directories - derive from challenges object to maintain single source of truth
+                // Create challenge directories - derive from challenges object to ensure
+                // the initialized directories match exactly the available challenges in the dropdown
                 const challengeDirs = Object.keys(challenges);
 
                 // Create all challenge directories
@@ -1302,12 +1303,13 @@ Follow any instructions or hints provided in each challenge directory.`;
                 appendOutput(`\n[Loading challenge: ${challenge.name}]\n`);
 
                 // Fetch challenge files using helper function
-                const readmeContent = await fetchChallengeFile(`${baseUrl}/README.md`, 'README');
-                const setupContent = await fetchChallengeFile(`${baseUrl}/setup.sh`, 'setup script');
+                const readmeContent = await fetchChallengeFile(`${baseUrl}/README.md`, 'challenge README.md');
+                const setupContent = await fetchChallengeFile(`${baseUrl}/setup.sh`, 'challenge setup.sh');
 
                 appendOutput(`[Fetched challenge files from ctf-collection]\n`);
 
-                // Create the challenge directory if it doesn't exist
+                // Create the challenge directory - redundant safety check as initializeCTFFilesystem() 
+                // already created it, but ensures directory exists if initialization had issues
                 await sendCommandAndWait(`mkdir -p ${escapeShell(challengeId)}`);
 
                 // Create README.md file
