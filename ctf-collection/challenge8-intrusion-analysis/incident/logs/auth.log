@@ -1,0 +1,13 @@
+Dec 15 08:23:45 server sshd[1234]: Failed password for root from 192.168.1.100 port 45678 ssh2
+Dec 15 08:23:50 server sshd[1235]: Failed password for root from 192.168.1.100 port 45679 ssh2
+Dec 15 08:23:55 server sshd[1236]: Failed password for root from 192.168.1.100 port 45680 ssh2
+Dec 15 08:24:12 server sshd[1237]: Failed password for admin from 192.168.1.100 port 45681 ssh2
+Dec 15 08:24:18 server sshd[1238]: Failed password for admin from 192.168.1.100 port 45682 ssh2
+Dec 15 08:24:45 server sshd[1239]: Accepted password for backup from 192.168.1.100 port 45683 ssh2
+Dec 15 08:25:01 server sudo: backup : TTY=pts/0 ; PWD=/home/backup ; USER=root ; COMMAND=/bin/bash
+Dec 15 08:25:01 server sudo: pam_unix(sudo:session): session opened for user root by backup(uid=0)
+Dec 15 08:26:30 server sshd[1239]: Received disconnect from 192.168.1.100 port 45683:11: disconnected by user
+Dec 15 08:26:30 server sshd[1239]: Disconnected from user backup 192.168.1.100 port 45683
+Dec 15 09:15:22 server sshd[1456]: Accepted publickey for backup from 192.168.1.100 port 46789 ssh2
+Dec 15 09:15:45 server sudo: backup : TTY=pts/1 ; PWD=/home/backup ; USER=root ; COMMAND=/usr/bin/find / -name "*.conf"
+Dec 15 09:16:12 server sshd[1456]: Received disconnect from 192.168.1.100 port 46789:11: disconnected by user

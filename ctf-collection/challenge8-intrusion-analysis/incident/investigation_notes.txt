@@ -1,0 +1,23 @@
+INVESTIGATION NOTES
+===================
+
+INITIAL FINDINGS:
+- Multiple failed brute force attempts on root and admin accounts
+- Successful compromise of 'backup' account
+- Privilege escalation to root via sudo
+- Second access using SSH key (persistence mechanism)
+
+EVIDENCE LOCATIONS:
+1. logs/auth.log - Authentication logs showing the attack
+2. .bash_history - Commands executed by attacker
+3. suspicious_files/ - Files left by attacker (check hidden files!)
+
+ANALYSIS TASKS:
+1. Review auth.log for attack timeline
+2. Examine bash history for attacker actions
+3. Search for hidden files and directories
+4. Look for encoded or obfuscated data
+5. Check file permissions and timestamps
+
+The flag is hidden somewhere in the evidence. 
+Use your forensics skills to find it!
