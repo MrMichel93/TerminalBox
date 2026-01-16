@@ -18,11 +18,9 @@
     <link rel="preload" href="https://cdn.jsdelivr.net/gh/copy/v86@master/bios/vgabios.bin" as="fetch" crossorigin>
     <!-- Kernel image: Largest resource (~68MB), starts downloading immediately -->
     <link rel="preload" href="https://static.simonwillison.net/static/cors-allow/2026/buildroot-bzimage68.bin" as="fetch" crossorigin>
+    
     <!-- V86 library: JavaScript emulator code preloaded for faster execution -->
     <link rel="preload" href="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js" as="script">
-    
-    <!-- Pako library for gzip decompression (used for challenge .tar.gz extraction) -->
-    <link rel="preload" href="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js" as="script" crossorigin="anonymous">
     
     <style>
         * {
@@ -506,9 +504,8 @@
         <strong>About:</strong> This tool runs a minimal Linux distribution (Buildroot) inside your browser using
         <a href="https://github.com/copy/v86" target="_blank">v86</a>, an x86 emulator written in JavaScript/WebAssembly.
         <br><br>
-        <strong>CTF Challenges:</strong> Looking for practice challenges? Check out our 
-        <a href="disk-images/" target="_blank">CTF Challenge Disk Images</a> - 8 challenges ranging from Easy to Very Hard, 
-        all ready to download and extract.
+        <strong>CTF Challenges:</strong> Select a challenge from the dropdown above to load it into the emulator.
+        Each challenge is loaded directly from the ctf-collection folder with no downloads required.
         <br><br>
         <strong>Performance Optimizations:</strong>
         <ul style="margin: 8px 0 0 0; padding-left: 20px;">
@@ -520,7 +517,6 @@
         Boot time is typically 10-30 seconds depending on your connection and device. The main bottleneck is downloading the ~68MB kernel image.
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js" crossorigin="anonymous"></script>
     <script>
         // Helper function to check if running on file:// protocol
@@ -600,50 +596,42 @@ Option 3 - PHP:
             'challenge1-hidden-files': {
                 name: 'Hidden Files Explorer',
                 difficulty: 'easy',
-                description: 'Learn to find and examine hidden files in Linux systems.',
-                filename: 'challenge1-hidden-files.tar.gz'
+                description: 'Learn to find and examine hidden files in Linux systems.'
             },
             'challenge2-process-detective': {
                 name: 'Process Detective',
                 difficulty: 'easy',
-                description: 'Master process management and monitoring commands.',
-                filename: 'challenge2-process-detective.tar.gz'
+                description: 'Master process management and monitoring commands.'
             },
             'challenge3-network-navigator': {
                 name: 'Network Navigator',
                 difficulty: 'medium',
-                description: 'Explore network configuration and troubleshooting.',
-                filename: 'challenge3-network-navigator.tar.gz'
+                description: 'Explore network configuration and troubleshooting.'
             },
             'challenge4-log-forensics': {
                 name: 'Log File Forensics',
                 difficulty: 'medium',
-                description: 'Investigate system logs to uncover critical information.',
-                filename: 'challenge4-log-forensics.tar.gz'
+                description: 'Investigate system logs to uncover critical information.'
             },
             'challenge5-permission-puzzle': {
                 name: 'Permission Puzzle',
                 difficulty: 'medium',
-                description: 'Navigate complex file permission scenarios.',
-                filename: 'challenge5-permission-puzzle.tar.gz'
+                description: 'Navigate complex file permission scenarios.'
             },
             'challenge6-archive-archaeology': {
                 name: 'Archive Archaeology',
                 difficulty: 'hard',
-                description: 'Extract and analyze nested archive files.',
-                filename: 'challenge6-archive-archaeology.tar.gz'
+                description: 'Extract and analyze nested archive files.'
             },
             'challenge7-script-debugger': {
                 name: 'Script Debugger',
                 difficulty: 'hard',
-                description: 'Debug and fix broken shell scripts.',
-                filename: 'challenge7-script-debugger.tar.gz'
+                description: 'Debug and fix broken shell scripts.'
             },
             'challenge8-intrusion-analysis': {
                 name: 'System Intrusion Analysis',
                 difficulty: 'very hard',
-                description: 'Perform forensic analysis on a compromised system.',
-                filename: 'challenge8-intrusion-analysis.tar.gz'
+                description: 'Perform forensic analysis on a compromised system.'
             }
         };
 
@@ -669,16 +657,13 @@ Option 3 - PHP:
             return '.';
         }
 
-        // Function to get challenge download URL
-        function getChallengeUrl(challengeId) {
-            const challenge = challenges[challengeId];
-            if (!challenge) return null;
-            
+        // Function to get challenge base URL
+        function getChallengeBaseUrl(challengeId) {
             const baseUrl = getBaseUrl();
             if (baseUrl === null) {
                 return null; // file:// protocol detected
             }
-            return `${baseUrl}/disk-images/${challenge.filename}`;
+            return `${baseUrl}/ctf-collection/${challengeId}`;
         }
 
         const statusIndicator = document.getElementById('status-indicator');
@@ -943,6 +928,46 @@ Option 3 - PHP:
             }, 500);
         }
 
+        /**
+         * Initialize the CTF filesystem by creating directories and README
+         */
+        async function initializeCTFFilesystem() {
+            try {
+                // Define the README.md content
+                const readmeContent = `Welcome to the CTF Challenges!
+
+Each folder corresponds to a CTF challenge.
+Navigate into a specific folder using 'cd' to begin a challenge.
+Follow any instructions or hints provided in each challenge directory.`;
+
+                // Create the README.md file in the root directory
+                const base64Readme = safeBase64Encode(readmeContent);
+                await sendCommandAndWait(`echo -n ${escapeShell(base64Readme)} | base64 -d > README.md`);
+
+                // Create challenge directories
+                const challengeDirs = [
+                    'challenge1-hidden-files',
+                    'challenge2-process-detective',
+                    'challenge3-network-navigator',
+                    'challenge4-log-forensics',
+                    'challenge5-permission-puzzle',
+                    'challenge6-archive-archaeology',
+                    'challenge7-script-debugger',
+                    'challenge8-intrusion-analysis'
+                ];
+
+                // Create all challenge directories
+                for (const dir of challengeDirs) {
+                    await sendCommandAndWait(`mkdir -p ${escapeShell(dir)}`);
+                }
+
+                return true;
+            } catch (error) {
+                console.error('Error initializing CTF filesystem:', error);
+                throw error;
+            }
+        }
+
         async function initEmulator() {
             // Performance Optimization: Track loading progress for better UX
             updateProgress(0, 'Initializing emulator...');
@@ -1060,12 +1085,25 @@ Option 3 - PHP:
                     const lastChars = outputBuffer.slice(-50);
                     if (!isReady && promptPattern.test(lastChars)) {
                         isReady = true;
-                        updateProgress(100, 'Linux is ready');
-                        updateStatus('ready', 'Linux is ready');
-                        commandInput.disabled = false;
-                        runBtn.disabled = false;
-                        setOutput('Linux booted successfully. Enter a command above.\n\n');
-                        commandInput.focus();
+                        updateProgress(100, 'Setting up CTF environment...');
+                        updateStatus('booting', 'Setting up CTF environment...');
+                        setOutput('Linux booted successfully. Initializing CTF challenges...\n\n');
+                        
+                        // Initialize the CTF collection filesystem
+                        initializeCTFFilesystem().then(() => {
+                            updateStatus('ready', 'Linux is ready');
+                            commandInput.disabled = false;
+                            runBtn.disabled = false;
+                            appendOutput('[✓ CTF environment ready! Type "ls" to see available challenges]\n\n');
+                            commandInput.focus();
+                        }).catch(error => {
+                            console.error('Failed to initialize CTF filesystem:', error);
+                            updateStatus('ready', 'Linux is ready (CTF setup failed)');
+                            commandInput.disabled = false;
+                            runBtn.disabled = false;
+                            appendOutput('[✗ Warning: CTF setup failed, but emulator is ready]\n\n');
+                            commandInput.focus();
+                        });
                     }
                 });
 
@@ -1184,35 +1222,10 @@ Option 3 - PHP:
         // Challenge Loading System
         // =============================================================================
         // This section implements dynamic challenge loading into the Linux emulator.
-        // Instead of downloading .tar.gz files locally, challenges are fetched via
-        // AJAX, decompressed in-browser using pako, parsed from tar format, and
-        // loaded directly into the running emulator by executing commands to create
+        // Challenges are fetched directly from the ctf-collection folder via AJAX
+        // and loaded into the running emulator by executing commands to create
         // the necessary files and directories.
         // =============================================================================
-
-        /**
-         * Validate and sanitize file path to prevent directory traversal attacks
-         * @param {string} path - The file path to validate
-         * @returns {string|null} Sanitized path or null if invalid
-         */
-        function sanitizePath(path) {
-            // Remove any leading slashes
-            path = path.replace(/^\/+/, '');
-            
-            // Check for directory traversal attempts
-            if (path.includes('..') || path.includes('//')) {
-                console.warn(`Rejected suspicious path: ${path}`);
-                return null;
-            }
-            
-            // Check for absolute paths or paths starting with special characters
-            if (path.startsWith('/') || path.startsWith('~')) {
-                console.warn(`Rejected absolute path: ${path}`);
-                return null;
-            }
-            
-            return path;
-        }
 
         /**
          * Escape a string for safe use in shell commands
@@ -1247,63 +1260,7 @@ Option 3 - PHP:
         }
 
         /**
-         * Parse a tar archive buffer and extract files
-         * @param {ArrayBuffer} buffer - The tar file buffer
-         * @returns {Array} Array of file objects with {name, type, content}
-         */
-        function parseTar(buffer) {
-            const files = [];
-            const view = new DataView(buffer);
-            let offset = 0;
-
-            while (offset < buffer.byteLength - 512) {
-                // Read header (512 bytes)
-                const header = new Uint8Array(buffer, offset, 512);
-                
-                // Check for end of archive (all zeros)
-                if (header[0] === 0) break;
-                
-                // Extract filename (offset 0, 100 bytes, null-terminated)
-                let nameBytes = header.slice(0, 100);
-                let nameEnd = nameBytes.indexOf(0);
-                if (nameEnd === -1) nameEnd = 100;
-                const name = new TextDecoder().decode(nameBytes.slice(0, nameEnd));
-                
-                // Extract file size (offset 124, 12 bytes, octal)
-                const sizeBytes = new TextDecoder().decode(header.slice(124, 136)).trim();
-                const size = parseInt(sizeBytes, 8) || 0;
-                
-                // Extract type flag (offset 156, 1 byte)
-                // '0' or '\0' = normal file, '5' = directory
-                const typeFlag = String.fromCharCode(header[156]);
-                const isDirectory = typeFlag === '5';
-                
-                offset += 512; // Move past header
-                
-                // Read file content if it's a file
-                let content = '';
-                if (!isDirectory && size > 0) {
-                    const contentBytes = new Uint8Array(buffer, offset, size);
-                    content = new TextDecoder().decode(contentBytes);
-                }
-                
-                files.push({
-                    name: name,
-                    type: isDirectory ? 'directory' : 'file',
-                    content: content,
-                    size: size
-                });
-                
-                // Move to next entry (content is padded to 512-byte boundary)
-                const paddedSize = Math.ceil(size / 512) * 512;
-                offset += paddedSize;
-            }
-            
-            return files;
-        }
-
-        /**
-         * Load a challenge into the emulator by fetching and extracting the tar.gz file
+         * Load a challenge into the emulator by fetching files from ctf-collection
          * @param {string} challengeId - The challenge identifier
          */
         async function loadChallengeIntoEmulator(challengeId) {
@@ -1318,8 +1275,8 @@ Option 3 - PHP:
                 return;
             }
 
-            const url = getChallengeUrl(challengeId);
-            if (!url) {
+            const baseUrl = getChallengeBaseUrl(challengeId);
+            if (!baseUrl) {
                 // Check if we're on file:// protocol
                 if (isFileProtocol()) {
                     alert(FILE_PROTOCOL_ERROR_MSG);
@@ -1336,98 +1293,61 @@ Option 3 - PHP:
                 loadChallengeBtn.textContent = 'Loading...';
                 appendOutput(`\n[Loading challenge: ${challenge.name}]\n`);
 
-                // Fetch the .tar.gz file
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch challenge: ${response.statusText}`);
+                // Fetch README.md
+                const readmeUrl = `${baseUrl}/README.md`;
+                const readmeResponse = await fetch(readmeUrl);
+                if (!readmeResponse.ok) {
+                    throw new Error(`Failed to fetch README: ${readmeResponse.statusText}`);
                 }
+                const readmeContent = await readmeResponse.text();
 
-                const arrayBuffer = await response.arrayBuffer();
-                
-                // Decompress gzip using pako
-                const compressed = new Uint8Array(arrayBuffer);
-                const decompressed = pako.inflate(compressed);
-                
-                // Parse tar archive
-                const files = parseTar(decompressed.buffer);
-                
-                appendOutput(`[Extracted ${files.length} files from archive]\n`);
-                
-                // Process each file from the archive
-                for (const file of files) {
-                    // Validate and sanitize file paths to prevent directory traversal
-                    const safeName = sanitizePath(file.name);
-                    if (!safeName) {
-                        appendOutput(`[Skipped suspicious file: ${file.name}]\n`);
-                        continue;
-                    }
-                    
-                    if (file.type === 'directory') {
-                        // Create directory in emulator
-                        const dirPath = safeName.replace(/\/$/, ''); // Remove trailing slash
-                        if (dirPath) {
-                            await sendCommandAndWait(`mkdir -p ${escapeShell(dirPath)}`);
-                        }
-                    } else if (file.type === 'file' && file.content) {
-                        // Create file in emulator using base64 encoding
-                        // This approach handles special characters better than heredoc
-                        const filePath = safeName;
-                        const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
-                        
-                        // Ensure parent directory exists
-                        if (dirPath) {
-                            await sendCommandAndWait(`mkdir -p ${escapeShell(dirPath)}`);
-                        }
-                        
-                        // Safely encode file content to base64, handling non-Latin1 characters
-                        // This avoids shell escaping issues and supports binary/UTF-8 content
-                        const base64Content = safeBase64Encode(file.content);
-                        
-                        // Check if base64 content is too large (>100KB encoded ~ 75KB original)
-                        if (base64Content.length > 100000) {
-                            console.warn(`File ${filePath} is large (${base64Content.length} chars), may fail`);
-                            appendOutput(`[Warning: Large file ${filePath}, attempting to create...]\n`);
-                        }
-                        
-                        // Use echo -n with base64 content and properly escaped file path
-                        // Base64 content is safe (alphanumeric + / and =), but we still escape it
-                        await sendCommandAndWait(`echo -n ${escapeShell(base64Content)} | base64 -d > ${escapeShell(filePath)}`);
-                        
-                        // Make shell scripts executable
-                        if (filePath.endsWith('.sh')) {
-                            await sendCommandAndWait(`chmod +x ${escapeShell(filePath)}`);
-                        }
-                    }
+                // Fetch setup.sh
+                const setupUrl = `${baseUrl}/setup.sh`;
+                const setupResponse = await fetch(setupUrl);
+                if (!setupResponse.ok) {
+                    throw new Error(`Failed to fetch setup script: ${setupResponse.statusText}`);
                 }
+                const setupContent = await setupResponse.text();
 
-                // Find and run setup script if it exists
-                const setupScript = files.find(f => f.name.endsWith('/setup.sh') || f.name === 'setup.sh');
-                if (setupScript) {
-                    const safeName = sanitizePath(setupScript.name);
-                    if (!safeName) {
-                        throw new Error('Setup script has invalid path');
-                    }
-                    
-                    const challengeDir = safeName.replace(/\/setup\.sh$/, '') || '.';
-                    
-                    appendOutput(`\n[Running challenge setup script]\n`);
-                    
-                    // Run setup script with proper directory context and escaping
-                    // Note: cd in one command doesn't persist, so we combine cd && bash
-                    if (challengeDir !== '.') {
-                        await sendCommandAndWait(`cd ${escapeShell(challengeDir)} && bash setup.sh`);
-                    } else {
-                        await sendCommandAndWait(`bash setup.sh`);
-                    }
-                }
+                appendOutput(`[Fetched challenge files from ctf-collection]\n`);
+
+                // Create the challenge directory if it doesn't exist
+                await sendCommandAndWait(`mkdir -p ${escapeShell(challengeId)}`);
+
+                // Create README.md file
+                const base64Readme = safeBase64Encode(readmeContent);
+                await sendCommandAndWait(`echo -n ${escapeShell(base64Readme)} | base64 -d > ${escapeShell(challengeId)}/README.md`);
+
+                // Create setup.sh file
+                const base64Setup = safeBase64Encode(setupContent);
+                await sendCommandAndWait(`echo -n ${escapeShell(base64Setup)} | base64 -d > ${escapeShell(challengeId)}/setup.sh`);
+                await sendCommandAndWait(`chmod +x ${escapeShell(challengeId)}/setup.sh`);
+
+                appendOutput(`\n[Running challenge setup script]\n`);
+
+                // Run setup script
+                await sendCommandAndWait(`cd ${escapeShell(challengeId)} && bash setup.sh`);
 
                 appendOutput(`\n[✓ Challenge loaded successfully!]\n`);
-                appendOutput(`[You can now navigate to the challenge directory and start exploring]\n\n`);
+                appendOutput(`[Navigate to ${challengeId} directory with: cd ${challengeId}]\n\n`);
                 
                 // Update button state
                 loadChallengeBtn.textContent = '✓ Loaded!';
                 setTimeout(() => {
                     loadChallengeBtn.textContent = 'Load Challenge';
+                    loadChallengeBtn.disabled = false;
+                }, 2000);
+
+            } catch (error) {
+                console.error('Error loading challenge:', error);
+                appendOutput(`\n[✗ Error loading challenge: ${error.message}]\n\n`);
+                alert(`Failed to load challenge: ${error.message}`);
+                
+                // Reset button state
+                loadChallengeBtn.textContent = 'Load Challenge';
+                loadChallengeBtn.disabled = false;
+            }
+        }
                     loadChallengeBtn.disabled = false;
                 }, 2000);
 
