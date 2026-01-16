@@ -12,13 +12,13 @@ Visit the live instance: `https://yourusername.github.io/TerminalBox/`
 
 - **No Installation Required**: Runs entirely in your browser using WebAssembly
 - **Full Linux Environment**: Complete Buildroot Linux distribution with standard tools
-- **CTF Challenge Support**: Includes 8 downloadable CTF challenges (Easy to Very Hard)
+- **CTF Challenge Support**: Includes 8 CTF challenges (Easy to Very Hard)
 - **Performance Optimized**: Resource preloading, parallel downloads, and optimized memory usage
 - **User-Friendly Interface**: Command autocomplete, visual progress tracking, and session export
 
-## 📦 CTF Challenge Disk Images
+## 📦 CTF Challenges
 
-This repository includes 8 CTF challenges hosted via GitHub Pages:
+This repository includes 8 CTF challenges that load directly into the browser emulator:
 
 - **Challenge 1**: Hidden Files Explorer (Easy)
 - **Challenge 2**: Process Detective (Easy)
@@ -29,17 +29,13 @@ This repository includes 8 CTF challenges hosted via GitHub Pages:
 - **Challenge 7**: Script Debugger (Hard)
 - **Challenge 8**: System Intrusion Analysis (Very Hard)
 
-### Accessing Disk Images
+### Using Challenges
 
-Browse and download challenges at: `https://yourusername.github.io/TerminalBox/disk-images/`
-
-Or download directly:
-```bash
-wget https://yourusername.github.io/TerminalBox/disk-images/challenge1-hidden-files.tar.gz
-tar -xzf challenge1-hidden-files.tar.gz
-cd challenge1-hidden-files
-bash setup.sh
-```
+1. Wait for the emulator to boot
+2. Select a challenge from the dropdown menu
+3. Click "Load Challenge" to set it up
+4. Navigate to the challenge directory with `cd <challenge-name>`
+5. Follow the instructions in the challenge README
 
 ## 🌐 GitHub Pages Setup
 
@@ -48,13 +44,12 @@ This repository is configured to be served via GitHub Pages:
 1. **Enable GitHub Pages**:
    - Go to repository Settings → Pages
    - Under "Source", select "Deploy from a branch"
-   - Select the branch (e.g., `main` or `copilot/host-disk-images-github-pages`)
+   - Select the branch (e.g., `main`)
    - Select "/ (root)" as the folder
    - Click Save
 
 2. **Access Your Site**:
    - Main page: `https://yourusername.github.io/TerminalBox/`
-   - Disk images: `https://yourusername.github.io/TerminalBox/disk-images/`
 
 3. **Custom Domain** (Optional):
    - Add a `CNAME` file with your custom domain
@@ -92,11 +87,11 @@ Then visit: `http://localhost:8000`
 ```
 TerminalBox/
 ├── index.html              # Main Linux emulator interface (GitHub Pages homepage)
-├── disk-images/            # CTF challenge disk images
-│   ├── index.html         # Disk images browser/download page
-│   ├── README.md          # Disk images documentation
-│   ├── challenge1-hidden-files.tar.gz
-│   ├── challenge2-process-detective.tar.gz
+├── ctf-collection/         # CTF challenge source files
+│   ├── challenge1-hidden-files/
+│   │   ├── README.md
+│   │   └── setup.sh
+│   ├── challenge2-process-detective/
 │   ├── ... (6 more challenges)
 ├── .nojekyll              # Prevents Jekyll processing for GitHub Pages
 ├── OPTIMIZATIONS.md       # Performance optimization documentation
@@ -145,11 +140,6 @@ See [OPTIMIZATIONS.md](OPTIMIZATIONS.md) for detailed information about:
 - Stable internet connection for initial resource download
 - ~100MB of available memory
 
-### For Using Disk Images
-- Linux, macOS, or Windows with tar/gzip support
-- Bash shell (for running challenge setup scripts)
-- Standard Linux utilities (included in most distributions)
-
 ## 🤝 Contributing
 
 Contributions are welcome! Areas for improvement:
@@ -174,5 +164,5 @@ This project uses:
 
 For issues, questions, or suggestions:
 - Open an issue on GitHub
-- Check existing documentation in `disk-images/README.md`
+- Check existing documentation in the ctf-collection folder
 - Review `OPTIMIZATIONS.md` for performance details
