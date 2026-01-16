@@ -976,6 +976,8 @@ Follow any instructions or hints provided in each challenge directory.`;
                 await sendCommandAndWait(`echo -n ${escapeShell(base64Readme)} | base64 -d > README.md`);
 
                 // Load all challenges automatically so directories are pre-populated
+                // Note: Sequential loading is required because setup scripts execute in the emulator
+                // via a command queue that prevents race conditions
                 const challengeDirs = Object.keys(challenges);
                 const loadedChallenges = [];
                 const failedChallenges = [];
@@ -986,7 +988,8 @@ Follow any instructions or hints provided in each challenge directory.`;
                         loadedChallenges.push(dir);
                     } catch (error) {
                         console.error(`Failed to load challenge ${dir}:`, error);
-                        failedChallenges.push(dir);
+                        console.error('Possible causes: network issues, missing files in ctf-collection, or file:// protocol');
+                        failedChallenges.push({ name: dir, error: error.message });
                         // Continue loading other challenges even if one fails
                     }
                 }
