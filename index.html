@@ -1298,9 +1298,9 @@ Follow any instructions or hints provided in each challenge directory.`;
         }
 
         /**
-         * Load a challenge into the emulator by fetching files from ctf-collection
-         * Note: Challenges are pre-loaded during boot, this function is kept for backwards compatibility
-         * and to inform users about already-loaded challenges
+         * Display information about a challenge
+         * Note: All challenges are pre-loaded during boot. This function provides
+         * helpful navigation information to users.
          * @param {string} challengeId - The challenge identifier
          */
         async function loadChallengeIntoEmulator(challengeId) {
