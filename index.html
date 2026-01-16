@@ -19,9 +19,6 @@
     <!-- Kernel image: Largest resource (~68MB), starts downloading immediately -->
     <link rel="preload" href="https://static.simonwillison.net/static/cors-allow/2026/buildroot-bzimage68.bin" as="fetch" crossorigin>
     
-    <!-- V86 library: JavaScript emulator code preloaded for faster execution -->
-    <link rel="preload" href="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js" as="script" crossorigin="anonymous">
-    
     <style>
         * {
             box-sizing: border-box;
@@ -984,31 +981,57 @@ Option 3 - PHP:
         function cancelCommand() {
             if (!emulator || !waitingForOutput) return;
 
-            // Send Ctrl+C (ASCII 3) multiple times, then Ctrl+\ (SIGQUIT) as backup
-            emulator.serial0_send('\x03');
-            setTimeout(() => emulator.serial0_send('\x03'), 100);
-            setTimeout(() => emulator.serial0_send('\x03'), 200);
-            setTimeout(() => emulator.serial0_send('\x1c'), 300); // Ctrl+\ = SIGQUIT
-
-            appendOutput('^C\n');
-
-            // Enter draining mode - discard output until we see a fresh prompt
-            drainingOutput = true;
-            outputBuffer = '';
-
-            // Forcefully reset UI state after a short delay
-            // (in case the command is blocked on I/O and can't process signals)
-            setTimeout(() => {
-                if (waitingForOutput) {
-                    waitingForOutput = false;
-                    commandOutput = '';
-                    stopTimer();
-                    commandInput.disabled = false;
-                    runBtn.disabled = false;
-                    appendOutput('[cancelled]\n');
-                    commandInput.focus();
+            try {
+                // Send Ctrl+C (ASCII 3) multiple times, then Ctrl+\ (SIGQUIT) as backup
+                if (emulator.serial0_send) {
+                    emulator.serial0_send('\x03');
+                    setTimeout(() => {
+                        if (emulator && emulator.serial0_send) {
+                            emulator.serial0_send('\x03');
+                        }
+                    }, 100);
+                    setTimeout(() => {
+                        if (emulator && emulator.serial0_send) {
+                            emulator.serial0_send('\x03');
+                        }
+                    }, 200);
+                    setTimeout(() => {
+                        if (emulator && emulator.serial0_send) {
+                            emulator.serial0_send('\x1c'); // Ctrl+\ = SIGQUIT
+                        }
+                    }, 300);
                 }
-            }, 500);
+
+                appendOutput('^C\n');
+
+                // Enter draining mode - discard output until we see a fresh prompt
+                drainingOutput = true;
+                outputBuffer = '';
+
+                // Forcefully reset UI state after a short delay
+                // (in case the command is blocked on I/O and can't process signals)
+                setTimeout(() => {
+                    if (waitingForOutput) {
+                        waitingForOutput = false;
+                        commandOutput = '';
+                        stopTimer();
+                        commandInput.disabled = false;
+                        runBtn.disabled = false;
+                        appendOutput('[cancelled]\n');
+                        commandInput.focus();
+                    }
+                }, 500);
+            } catch (error) {
+                console.error('Error cancelling command:', error);
+                // Force reset UI state even on error
+                waitingForOutput = false;
+                commandOutput = '';
+                stopTimer();
+                commandInput.disabled = false;
+                runBtn.disabled = false;
+                appendOutput('[Error cancelling command, reset UI]\n');
+                commandInput.focus();
+            }
         }
 
         /**
@@ -1113,6 +1136,16 @@ Follow any instructions or hints provided in each challenge directory.`;
             updateProgress(0, 'Initializing emulator...');
 
             try {
+                // Validate that V86 constructor is available
+                if (typeof V86 === 'undefined') {
+                    throw new Error('V86 library not loaded. Please refresh the page.');
+                }
+
+                // Validate screen container exists
+                if (!screenContainer) {
+                    throw new Error('Screen container element not found');
+                }
+
                 // Performance Optimization: V86 emulator configuration optimized for fast boot
                 // - Resources are preloaded via <link rel="preload"> tags in <head>
                 // - Browser fetches WASM, BIOS, and kernel in parallel before this code runs
@@ -1149,6 +1182,11 @@ Follow any instructions or hints provided in each challenge directory.`;
                     disable_keyboard: true,
                     disable_mouse: true
                 });
+
+                // Validate emulator was created successfully
+                if (!emulator) {
+                    throw new Error('Failed to create V86 emulator instance');
+                }
 
                 updateProgress(30, 'Loading kernel and BIOS...');
 
@@ -1266,7 +1304,17 @@ Follow any instructions or hints provided in each challenge directory.`;
         }
 
         function sendCommand(cmd) {
-            if (!emulator || !isReady) return;
+            if (!emulator || !isReady) {
+                console.warn('Cannot send command: emulator not ready');
+                return;
+            }
+
+            // Validate command is a string
+            if (typeof cmd !== 'string') {
+                console.error('Invalid command type:', typeof cmd);
+                appendOutput('[Error: Invalid command]\n');
+                return;
+            }
 
             currentCommand = cmd;
             commandOutput = '';
@@ -1282,7 +1330,24 @@ Follow any instructions or hints provided in each challenge directory.`;
             startTimer();
 
             // Send command - completion detected when shell prompt reappears
-            emulator.serial0_send(cmd + '\n');
+            // Wrap in try-catch to handle potential WASM errors gracefully
+            try {
+                if (!emulator.serial0_send) {
+                    throw new Error('Emulator serial interface not available');
+                }
+                emulator.serial0_send(cmd + '\n');
+            } catch (error) {
+                console.error('Error sending command to emulator:', error);
+                appendOutput('[Error: Failed to send command to emulator]\n');
+                appendOutput('[Details: ' + error.message + ']\n');
+                
+                // Reset UI state on error
+                waitingForOutput = false;
+                stopTimer();
+                commandInput.disabled = false;
+                runBtn.disabled = false;
+                commandInput.focus();
+            }
         }
 
         runBtn.addEventListener('click', function() {
@@ -1493,8 +1558,21 @@ Follow any instructions or hints provided in each challenge directory.`;
             // Instead, just mark that we're waiting for new output
             waitingForOutput = true;
 
-            // Send command
-            emulator.serial0_send(cmd + '\n');
+            // Send command with error handling
+            try {
+                if (!emulator || !emulator.serial0_send) {
+                    throw new Error('Emulator serial interface not available');
+                }
+                emulator.serial0_send(cmd + '\n');
+            } catch (error) {
+                console.error('Error sending queued command:', error);
+                // Reset state and continue with next command
+                waitingForOutput = false;
+                isExecutingCommand = false;
+                resolve(); // Resolve to allow queue to continue
+                setTimeout(() => processCommandQueue(), 100);
+                return;
+            }
 
             // Set up completion handler
             let completed = false;
@@ -1524,8 +1602,14 @@ Follow any instructions or hints provided in each challenge directory.`;
                         outputBuffer = '';
                         commandOutput = '';
                         
-                        // Send Ctrl+C to try to stop hung command
-                        emulator.serial0_send('\x03');
+                        // Send Ctrl+C to try to stop hung command (with error handling)
+                        try {
+                            if (emulator && emulator.serial0_send) {
+                                emulator.serial0_send('\x03');
+                            }
+                        } catch (error) {
+                            console.error('Error sending cancel signal on timeout:', error);
+                        }
                         
                         appendOutput(`\n[Command timeout - sent cancel signal]\n`);
                     }
