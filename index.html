@@ -1348,19 +1348,6 @@ Follow any instructions or hints provided in each challenge directory.`;
                 loadChallengeBtn.disabled = false;
             }
         }
-                    loadChallengeBtn.disabled = false;
-                }, 2000);
-
-            } catch (error) {
-                console.error('Error loading challenge:', error);
-                appendOutput(`\n[✗ Error loading challenge: ${error.message}]\n\n`);
-                alert(`Failed to load challenge: ${error.message}`);
-                
-                // Reset button state
-                loadChallengeBtn.textContent = 'Load Challenge';
-                loadChallengeBtn.disabled = false;
-            }
-        }
 
         /**
          * Send a command to the emulator and wait for it to complete
