@@ -6,7 +6,7 @@ This document details the optimizations implemented to improve the startup perfo
 ## Implemented Optimizations
 
 ### 1. DNS Preconnect Hints
-**Lines: 8-10 in v86.html**
+**Lines: 8-11 in index.html**
 
 ```html
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -19,31 +19,32 @@ This document details the optimizations implemented to improve the startup perfo
 - Particularly beneficial on slower network connections
 
 ### 2. Resource Preloading
-**Lines: 12-20 in v86.html**
+**Lines: 12-20 in index.html**
 
 ```html
 <link rel="preload" href="https://cdn.jsdelivr.net/npm/v86@latest/build/v86.wasm" as="fetch" crossorigin>
 <link rel="preload" href="https://cdn.jsdelivr.net/gh/copy/v86@master/bios/seabios.bin" as="fetch" crossorigin>
 <link rel="preload" href="https://cdn.jsdelivr.net/gh/copy/v86@master/bios/vgabios.bin" as="fetch" crossorigin>
 <link rel="preload" href="https://static.simonwillison.net/static/cors-allow/2026/buildroot-bzimage68.bin" as="fetch" crossorigin>
-<link rel="preload" href="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js" as="script" crossorigin="anonymous">
 ```
 
 **Benefits:**
 - Browser begins downloading critical resources immediately when page loads
-- Parallel downloading of WASM module, BIOS files, kernel image, and JavaScript library
+- Parallel downloading of WASM module, BIOS files, and kernel image
 - Resources are cached and ready when V86 emulator initializes
 - Can reduce perceived load time by 30-50% on fast connections
+
+**Note:** The libv86.js script is loaded synchronously via a script tag and does not benefit from preloading since the emulator initialization is user-triggered (via "Start Emulator" button). Preloading it would trigger browser warnings about the resource being loaded but not used within a few seconds of the window's load event, which occurs before the user has a chance to click the start button.
 
 **Resource Sizes:**
 - WASM module: ~2MB
 - SeaBIOS: ~128KB
 - VGA BIOS: ~32KB
 - Kernel image: ~68MB (main bottleneck)
-- libv86.js: ~800KB
+- libv86.js: ~800KB (loaded synchronously via script tag)
 
 ### 3. Progress Tracking
-**Lines: 81-89, 291-294, 388-389, 514-518, 636-803 in v86.html**
+**Lines: 81-89, 291-294, 388-389, 514-518, 636-803 in index.html**
 
 **Implementation:**
 - Added visual progress bar to status section
@@ -60,7 +61,7 @@ This document details the optimizations implemented to improve the startup perfo
 - Helps users understand that the application is actively loading
 
 ### 4. Code Documentation
-**Lines: 638-690 in v86.html**
+**Lines: 638-690 in index.html**
 
 **Added comprehensive inline documentation explaining:**
 - Why each optimization exists
@@ -69,7 +70,7 @@ This document details the optimizations implemented to improve the startup perfo
 - Performance considerations
 
 ### 5. Memory Optimization
-**Line: 645 in v86.html**
+**Line: 645 in index.html**
 
 ```javascript
 memory_size: 64 * 1024 * 1024, // 64MB
@@ -82,13 +83,35 @@ memory_size: 64 * 1024 * 1024, // 64MB
 - Better performance on lower-end devices
 
 ### 6. User Documentation
-**Lines: 828-845 in v86.html**
+**Lines: 828-845 in index.html**
 
 Added visible documentation explaining:
 - What optimizations were implemented
 - Expected boot time (10-30 seconds)
 - Main bottleneck (68MB kernel download)
 - How optimizations improve performance
+
+### 7. Error Handling and WASM Safety
+**Multiple functions in index.html**
+
+**Implementation:**
+- Added validation before V86 constructor call
+- Wrapped all `serial0_send` calls in try-catch blocks
+- Added null checks for emulator instance and methods
+- Graceful error recovery with user-friendly messages
+- Prevented WASM panics from crashing the application
+
+**Benefits:**
+- Prevents application crashes from WASM runtime errors
+- Provides helpful error messages to users
+- Maintains UI state consistency even when errors occur
+- Allows application to recover from transient errors
+
+**Affected Functions:**
+- `initEmulator()`: Validates V86 availability and emulator creation
+- `sendCommand()`: Validates command and emulator state before sending
+- `cancelCommand()`: Error handling for cancel operations
+- `processCommandQueue()`: Safe command queue processing with error recovery
 
 ## Performance Impact
 
