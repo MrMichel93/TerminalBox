@@ -505,7 +505,7 @@
         <a href="https://github.com/copy/v86" target="_blank">v86</a>, an x86 emulator written in JavaScript/WebAssembly.
         <br><br>
         <strong>CTF Challenges:</strong> All challenges are automatically loaded when the emulator boots.
-        Simply use 'ls' to see available challenge directories, then 'cd' into any challenge to begin.
+        Use 'ls' to see available challenge directories, then 'cd' into any challenge and run 'ls' to see the challenge files.
         <br><br>
         <strong>Performance Optimizations:</strong>
         <ul style="margin: 8px 0 0 0; padding-left: 20px;">
@@ -1315,11 +1315,12 @@ Follow any instructions or hints provided in each challenge directory.`;
                 return;
             }
 
-            // Simply inform the user that the challenge is ready
+            // Simply inform the user about the challenge and how to access it
             appendOutput(`\n[Challenge: ${challenge.name}]\n`);
-            appendOutput(`[This challenge is already loaded and ready to use]\n`);
+            appendOutput(`[All challenges were loaded during boot]\n`);
             appendOutput(`[Navigate to the directory: cd ${challengeId}]\n`);
-            appendOutput(`[Read the instructions: cat ${challengeId}/README.md]\n\n`);
+            appendOutput(`[List files: ls]\n`);
+            appendOutput(`[Read the instructions: cat README.md]\n\n`);
             
             // Update button state
             loadChallengeBtn.textContent = '✓ Ready!';
