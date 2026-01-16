@@ -31,11 +31,11 @@ This repository includes 8 CTF challenges that load directly into the browser em
 
 ### Using Challenges
 
-1. Wait for the emulator to boot
-2. Select a challenge from the dropdown menu
-3. Click "Load Challenge" to set it up
-4. Navigate to the challenge directory with `cd <challenge-name>`
-5. Follow the instructions in the challenge README
+1. Wait for the emulator to boot (all challenges are automatically loaded)
+2. Use `ls` to see available challenge directories
+3. Navigate to a challenge with `cd <challenge-name>` (e.g., `cd challenge1-hidden-files`)
+4. Use `ls` to see the challenge files
+5. Read the instructions with `cat README.md`
 
 ## 🌐 GitHub Pages Setup
 

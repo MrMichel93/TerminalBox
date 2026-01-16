@@ -977,9 +977,24 @@ Follow any instructions or hints provided in each challenge directory.`;
 
                 // Load all challenges automatically so directories are pre-populated
                 const challengeDirs = Object.keys(challenges);
+                const loadedChallenges = [];
+                const failedChallenges = [];
 
                 for (const dir of challengeDirs) {
-                    await setupChallengeFiles(dir);
+                    try {
+                        await setupChallengeFiles(dir);
+                        loadedChallenges.push(dir);
+                    } catch (error) {
+                        console.error(`Failed to load challenge ${dir}:`, error);
+                        failedChallenges.push(dir);
+                        // Continue loading other challenges even if one fails
+                    }
+                }
+
+                // Log summary of what was loaded
+                console.log(`Loaded ${loadedChallenges.length}/${challengeDirs.length} challenges`);
+                if (failedChallenges.length > 0) {
+                    console.warn('Failed to load challenges:', failedChallenges);
                 }
 
                 return true;
@@ -1426,10 +1441,10 @@ Follow any instructions or hints provided in each challenge directory.`;
         // =============================================================================
         // Challenge Selection Event Handlers
         // =============================================================================
-        // These handlers manage the CTF challenge dropdown and load button.
-        // When a challenge is selected, the UI is updated with challenge info.
-        // When "Show Info" is clicked, the user gets helpful information about the challenge
-        // into the emulator dynamically without any local downloads.
+        // These handlers manage the CTF challenge dropdown and info button.
+        // When a challenge is selected, the UI is updated with challenge details.
+        // When "Show Info" is clicked, navigation instructions are displayed in the terminal.
+        // All challenges are pre-loaded during boot, so this just provides user guidance.
         // =============================================================================
 
         // Challenge selection handlers
