@@ -13,12 +13,8 @@ Analyze the compromised system, trace the attacker's actions, and find the flag.
 
 ## Setup
 
-Run the setup script:
-```bash
-bash setup.sh
-```
-
-This will create a simulated compromised system environment with various artifacts.
+The challenge environment is automatically loaded when you enter this directory.
+You'll find an `incident` directory with various forensic artifacts.
 
 ## Hints
 

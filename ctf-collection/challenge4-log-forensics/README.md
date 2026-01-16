@@ -13,12 +13,8 @@ Analyze the log file and find the flag. The flag format is: `FLAG{...}`
 
 ## Setup
 
-Run the setup script:
-```bash
-bash setup.sh
-```
-
-This will generate a large log file with the flag hidden inside.
+The challenge environment is automatically loaded when you enter this directory.
+You'll find an `access.log` file with the flag hidden inside.
 
 ## Hints
 
