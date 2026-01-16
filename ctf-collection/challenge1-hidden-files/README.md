@@ -13,12 +13,8 @@ Find the hidden flag. The flag format is: `FLAG{...}`
 
 ## Setup
 
-Run the setup script to create the challenge environment:
-```bash
-bash setup.sh
-```
-
-This will create a directory structure with various files and hidden items.
+The challenge environment is automatically loaded when you enter this directory.
+You'll find a `mystery_dir` directory with various files and hidden items.
 
 ## Hints
 

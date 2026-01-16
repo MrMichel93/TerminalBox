@@ -13,12 +13,8 @@ Debug the broken script and run it successfully to get the flag. The flag format
 
 ## Setup
 
-Run the setup script:
-```bash
-bash setup.sh
-```
-
-This will create a broken shell script that you need to fix.
+The challenge environment is automatically loaded when you enter this directory.
+You'll find a `broken_script.sh` file that you need to fix.
 
 ## Hints
 

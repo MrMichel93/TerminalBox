@@ -635,6 +635,40 @@ Option 3 - PHP:
             }
         };
 
+        // CTF Challenge file manifests - lists all files to load for each challenge
+        // Files are loaded directly from ctf-collection folder without executing any scripts
+        const challengeFiles = {
+            'challenge1-hidden-files': [
+                { path: 'README.md', executable: false },
+                { path: 'mystery_dir/.cache', executable: false },
+                { path: 'mystery_dir/.config/settings', executable: false },
+                { path: 'mystery_dir/.secrets/.clue', executable: false },
+                { path: 'mystery_dir/.secrets/.hidden_treasure', executable: false },
+                { path: 'mystery_dir/documents/report.txt', executable: false },
+                { path: 'mystery_dir/note.txt', executable: false },
+                { path: 'mystery_dir/readme.txt', executable: false }
+            ],
+            'challenge4-log-forensics': [
+                { path: 'README.md', executable: false },
+                { path: 'access.log', executable: false }
+            ],
+            'challenge7-script-debugger': [
+                { path: '.solution_script.sh', executable: true },
+                { path: 'README.md', executable: false },
+                { path: 'broken_script.sh', executable: false }
+            ],
+            'challenge8-intrusion-analysis': [
+                { path: 'README.md', executable: false },
+                { path: 'incident/.bash_history', executable: false },
+                { path: 'incident/investigation_notes.txt', executable: false },
+                { path: 'incident/logs/auth.log', executable: false },
+                { path: 'incident/suspicious_files/.attacker_data/.hidden_flag.txt', executable: false },
+                { path: 'incident/suspicious_files/README.txt', executable: false },
+                { path: 'incident/suspicious_files/suspicious_script.sh', executable: true },
+                { path: 'incident/timeline.txt', executable: false }
+            ]
+        };
+
         // Function to get the base URL for GitHub Pages
         function getBaseUrl() {
             // Detect if we're on GitHub Pages or localhost
@@ -939,24 +973,42 @@ Option 3 - PHP:
                 throw new Error('Cannot load challenges from file:// protocol or invalid base URL');
             }
 
-            // Fetch challenge files
-            const readmeContent = await fetchChallengeFile(`${baseUrl}/README.md`, 'challenge README.md');
-            const setupContent = await fetchChallengeFile(`${baseUrl}/setup.sh`, 'challenge setup.sh');
+            // Get the file manifest for this challenge
+            const files = challengeFiles[challengeId];
+            if (!files || files.length === 0) {
+                throw new Error(`No files configured for challenge: ${challengeId}`);
+            }
 
             // Create the challenge directory
             await sendCommandAndWait(`mkdir -p ${escapeShell(challengeId)}`);
 
-            // Create README.md file
-            const base64Readme = safeBase64Encode(readmeContent);
-            await sendCommandAndWait(`echo -n ${escapeShell(base64Readme)} | base64 -d > ${escapeShell(challengeId)}/README.md`);
-
-            // Create setup.sh file
-            const base64Setup = safeBase64Encode(setupContent);
-            await sendCommandAndWait(`echo -n ${escapeShell(base64Setup)} | base64 -d > ${escapeShell(challengeId)}/setup.sh`);
-            await sendCommandAndWait(`chmod +x ${escapeShell(challengeId)}/setup.sh`);
-
-            // Run setup script to populate the challenge directory
-            await sendCommandAndWait(`cd ${escapeShell(challengeId)} && bash setup.sh`);
+            // Load each file from the manifest
+            for (const fileInfo of files) {
+                const filePath = fileInfo.path;
+                const fullUrl = `${baseUrl}/${filePath}`;
+                
+                // Fetch the file content
+                const fileContent = await fetchChallengeFile(fullUrl, `${challengeId}/${filePath}`);
+                
+                // Determine the directory path for this file
+                const filePathParts = filePath.split('/');
+                const dirPath = filePathParts.slice(0, -1).join('/');
+                
+                // Create any necessary subdirectories
+                if (dirPath) {
+                    await sendCommandAndWait(`mkdir -p ${escapeShell(`${challengeId}/${dirPath}`)}`);
+                }
+                
+                // Write the file content
+                const base64Content = safeBase64Encode(fileContent);
+                const targetPath = `${challengeId}/${filePath}`;
+                await sendCommandAndWait(`echo -n ${escapeShell(base64Content)} | base64 -d > ${escapeShell(targetPath)}`);
+                
+                // Set executable permission if needed
+                if (fileInfo.executable) {
+                    await sendCommandAndWait(`chmod +x ${escapeShell(targetPath)}`);
+                }
+            }
         }
 
         /**
@@ -976,8 +1028,8 @@ Follow any instructions or hints provided in each challenge directory.`;
                 await sendCommandAndWait(`echo -n ${escapeShell(base64Readme)} | base64 -d > README.md`);
 
                 // Load all challenges automatically so directories are pre-populated
-                // Note: Sequential loading is required because setup scripts execute in the emulator
-                // via a command queue that prevents race conditions
+                // Note: Sequential loading is required to prevent race conditions
+                // in the emulator's command queue
                 const challengeDirs = Object.keys(challenges);
                 const loadedChallenges = [];
                 const failedChallenges = [];
