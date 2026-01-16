@@ -931,10 +931,9 @@ Option 3 - PHP:
         /**
          * Load challenge files into a specific directory
          * @param {string} challengeId - The challenge identifier
-         * @param {boolean} silent - If true, don't output status messages to terminal
          * @returns {Promise} Resolves when challenge is loaded
          */
-        async function setupChallengeFiles(challengeId, silent = false) {
+        async function setupChallengeFiles(challengeId) {
             const baseUrl = getChallengeBaseUrl(challengeId);
             if (!baseUrl) {
                 throw new Error('Cannot load challenges from file:// protocol or invalid base URL');
@@ -980,7 +979,7 @@ Follow any instructions or hints provided in each challenge directory.`;
                 const challengeDirs = Object.keys(challenges);
 
                 for (const dir of challengeDirs) {
-                    await setupChallengeFiles(dir, true);
+                    await setupChallengeFiles(dir);
                 }
 
                 return true;
