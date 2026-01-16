@@ -34,7 +34,7 @@ This document details the optimizations implemented to improve the startup perfo
 - Resources are cached and ready when V86 emulator initializes
 - Can reduce perceived load time by 30-50% on fast connections
 
-**Note:** The libv86.js script is loaded synchronously via a script tag and does not benefit from preloading since the emulator initialization is user-triggered (via "Start Emulator" button). Preloading it would trigger browser warnings about unused preloaded resources.
+**Note:** The libv86.js script is loaded synchronously via a script tag and does not benefit from preloading since the emulator initialization is user-triggered (via "Start Emulator" button). Preloading it would trigger browser warnings about the resource being loaded but not used within a few seconds of the window's load event, which occurs before the user has a chance to click the start button.
 
 **Resource Sizes:**
 - WASM module: ~2MB

@@ -1137,13 +1137,13 @@ Follow any instructions or hints provided in each challenge directory.`;
 
             try {
                 // Validate that V86 constructor is available
-                if (typeof V86 === 'undefined') {
+                if (typeof window.V86 === 'undefined' || !window.V86) {
                     throw new Error('V86 library not loaded. Please refresh the page.');
                 }
 
                 // Validate screen container exists
                 if (!screenContainer) {
-                    throw new Error('Screen container element not found');
+                    throw new Error('Screen container element (id="screen-container") not found in DOM');
                 }
 
                 // Performance Optimization: V86 emulator configuration optimized for fast boot
@@ -1309,10 +1309,14 @@ Follow any instructions or hints provided in each challenge directory.`;
                 return;
             }
 
-            // Validate command is a string
+            // Validate command is a string and not empty
             if (typeof cmd !== 'string') {
                 console.error('Invalid command type:', typeof cmd);
                 appendOutput('[Error: Invalid command]\n');
+                return;
+            }
+            if (!cmd || cmd.trim() === '') {
+                console.warn('Empty command, ignoring');
                 return;
             }
 
@@ -1518,6 +1522,10 @@ Follow any instructions or hints provided in each challenge directory.`;
          * @param {string} cmd - The command to execute
          * @param {number} timeout - Optional timeout in milliseconds (default: 30000)
          * @returns {Promise} Resolves when command completes, rejects if emulator not ready or timeout
+         * 
+         * Note: This function resolves even if the command fails to send (e.g., emulator error).
+         * This allows command queues to continue processing even if individual commands fail.
+         * Check console logs for errors if commands don't execute as expected.
          */
         function sendCommandAndWait(cmd, timeout = 30000) {
             return new Promise((resolve, reject) => {
@@ -1565,8 +1573,11 @@ Follow any instructions or hints provided in each challenge directory.`;
                 }
                 emulator.serial0_send(cmd + '\n');
             } catch (error) {
-                console.error('Error sending queued command:', error);
+                console.error('Error sending queued command:', cmd);
+                console.error('Error details:', error);
                 // Reset state and continue with next command
+                // Note: We resolve (not reject) to allow the queue to continue processing
+                // This is intentional - individual command failures shouldn't halt the entire queue
                 waitingForOutput = false;
                 isExecutingCommand = false;
                 resolve(); // Resolve to allow queue to continue
