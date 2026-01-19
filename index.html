@@ -4,21 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>v86 Linux Emulator</title>
-    
-    <!-- Performance Optimization: Preconnect to CDN domains -->
-    <!-- Establishes early connections (DNS, TCP, TLS) to reduce latency for resource loading -->
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link rel="preconnect" href="https://static.simonwillison.net" crossorigin>
-    
-    <!-- Performance Optimization: Preload critical resources for parallel loading -->
-    <!-- WASM module: Core emulator engine loaded first for fastest initialization -->
-    <link rel="preload" href="https://cdn.jsdelivr.net/npm/v86@latest/build/v86.wasm" as="fetch" crossorigin>
-    <!-- BIOS files: Small but essential, loaded early -->
-    <link rel="preload" href="https://cdn.jsdelivr.net/gh/copy/v86@master/bios/seabios.bin" as="fetch" crossorigin>
-    <link rel="preload" href="https://cdn.jsdelivr.net/gh/copy/v86@master/bios/vgabios.bin" as="fetch" crossorigin>
-    <!-- Kernel image: Largest resource (~68MB), starts downloading immediately -->
-    <link rel="preload" href="https://static.simonwillison.net/static/cors-allow/2026/buildroot-bzimage68.bin" as="fetch" crossorigin>
-    
     <style>
         * {
             box-sizing: border-box;
@@ -93,32 +78,13 @@
         .status-text {
             font-size: 0.9rem;
         }
-        .progress-bar {
-            flex: 1;
-            height: 6px;
-            background: var(--border);
-            border-radius: 3px;
-            overflow: hidden;
-            margin-left: 10px;
-        }
-        .progress-fill {
-            height: 100%;
-            background: var(--primary);
-            width: 0%;
-            transition: width 0.3s ease;
-        }
         .command-section {
             display: flex;
             gap: 10px;
             margin-bottom: 15px;
-            position: relative;
-        }
-        .autocomplete-wrapper {
-            flex: 1;
-            position: relative;
         }
         #command-input {
-            width: 100%;
+            flex: 1;
             padding: 10px 12px;
             font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
             font-size: 14px;
@@ -263,199 +229,12 @@
                 color: #9ca3af;
             }
         }
-        .autocomplete-dropdown {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-top: none;
-            border-radius: 0 0 6px 6px;
-            max-height: 200px;
-            overflow-y: auto;
-            display: none;
-            z-index: 1000;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .autocomplete-dropdown.show {
-            display: block;
-        }
-        .autocomplete-item {
-            padding: 8px 12px;
-            cursor: pointer;
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-            font-size: 13px;
-            color: var(--text);
-            border-bottom: 1px solid var(--border);
-        }
-        .autocomplete-item:last-child {
-            border-bottom: none;
-        }
-        .autocomplete-item:hover,
-        .autocomplete-item.selected {
-            background: var(--primary);
-            color: white;
-        }
-        .challenge-section {
-            margin-bottom: 20px;
-            padding: 15px;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-        }
-        .challenge-section h2 {
-            margin: 0 0 10px 0;
-            font-size: 1rem;
-            color: var(--text);
-        }
-        .challenge-controls {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        .challenge-select {
-            flex: 1;
-            min-width: 250px;
-            padding: 10px 12px;
-            font-size: 14px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            background: var(--surface);
-            color: var(--text);
-            cursor: pointer;
-        }
-        .challenge-select:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
-        }
-        .challenge-info {
-            margin-top: 10px;
-            padding: 10px;
-            background: var(--bg);
-            border-radius: 4px;
-            font-size: 0.85rem;
-            display: none;
-        }
-        .challenge-info.visible {
-            display: block;
-        }
-        .challenge-info .difficulty {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 3px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            margin-left: 8px;
-        }
-        .difficulty.easy { background: #22c55e; color: white; }
-        .difficulty.medium { background: #f59e0b; color: white; }
-        .difficulty.hard { background: #ef4444; color: white; }
-        .difficulty.very-hard { background: #7f1d1d; color: white; }
-        .file-protocol-warning {
-            display: none;
-            margin-bottom: 20px;
-            padding: 15px;
-            background: #fef3c7;
-            border: 2px solid #f59e0b;
-            border-radius: 6px;
-            color: #92400e;
-        }
-        .file-protocol-warning.visible {
-            display: block;
-        }
-        .file-protocol-warning h3 {
-            margin: 0 0 10px 0;
-            font-size: 1rem;
-            color: #92400e;
-        }
-        .file-protocol-warning p {
-            margin: 5px 0;
-            font-size: 0.9rem;
-        }
-        .file-protocol-warning code {
-            background: #fde68a;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: monospace;
-            font-size: 0.85rem;
-        }
-        @media (prefers-color-scheme: dark) {
-            .file-protocol-warning {
-                background: #451a03;
-                border-color: #f59e0b;
-                color: #fbbf24;
-            }
-            .file-protocol-warning h3 {
-                color: #fbbf24;
-            }
-            .file-protocol-warning code {
-                background: #78350f;
-                color: #fde68a;
-            }
-        }
-        .download-btn {
-            background: #059669;
-        }
-        .download-btn:hover:not(:disabled) {
-            background: #047857;
-        }
-        .start-container {
-            text-align: center;
-            padding: 40px 20px;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        .start-btn {
-            font-size: 18px;
-            padding: 15px 40px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .start-btn:hover {
-            background: var(--primary-hover);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
-        }
-        .start-btn:active {
-            transform: translateY(0);
-        }
-        .start-description {
-            margin-top: 15px;
-            color: #666;
-            font-size: 0.95rem;
-        }
-        @media (prefers-color-scheme: dark) {
-            .start-description {
-                color: #9ca3af;
-            }
-        }
-        .hidden {
-            display: none;
-        }
         @media (max-width: 600px) {
             body {
                 padding: 10px;
             }
             .command-section {
                 flex-direction: column;
-            }
-            .challenge-controls {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .challenge-select {
-                width: 100%;
             }
             #output {
                 min-height: 200px;
@@ -468,52 +247,13 @@
     <h1>v86 Linux Emulator</h1>
     <p class="description">Run Linux commands in your browser using x86 emulation</p>
 
-    <div id="file-protocol-warning" class="file-protocol-warning">
-        <h3>⚠️ Local Development Mode Detected</h3>
-        <p>You're opening this HTML file directly. To load CTF challenges, please run a local web server:</p>
-        <p><strong>Python:</strong> <code>python3 -m http.server 8000</code></p>
-        <p><strong>Node.js:</strong> <code>npx http-server -p 8000</code></p>
-        <p><strong>PHP:</strong> <code>php -S localhost:8000</code></p>
-        <p>Then visit: <code>http://localhost:8000</code></p>
-    </div>
-
-    <div class="challenge-section">
-        <h2>🎯 CTF Challenge Selection</h2>
-        <div class="challenge-controls">
-            <select id="challenge-select" class="challenge-select">
-                <option value="">Select a CTF Challenge...</option>
-                <option value="challenge1-hidden-files">Challenge 1: Hidden Files Explorer</option>
-                <option value="challenge2-process-detective">Challenge 2: Process Detective</option>
-                <option value="challenge3-network-navigator">Challenge 3: Network Navigator</option>
-                <option value="challenge4-log-forensics">Challenge 4: Log File Forensics</option>
-                <option value="challenge5-permission-puzzle">Challenge 5: Permission Puzzle</option>
-                <option value="challenge6-archive-archaeology">Challenge 6: Archive Archaeology</option>
-                <option value="challenge7-script-debugger">Challenge 7: Script Debugger</option>
-                <option value="challenge8-intrusion-analysis">Challenge 8: System Intrusion Analysis</option>
-            </select>
-            <button id="load-challenge-btn" class="download-btn" disabled>Show Info</button>
-        </div>
-        <div id="challenge-info" class="challenge-info"></div>
-    </div>
-
-    <div id="start-container" class="start-container">
-        <button id="start-emulator-btn" class="start-btn">Start Emulator</button>
-        <p class="start-description">Click to start the Linux emulator</p>
-    </div>
-
-    <div class="status-bar hidden" id="status-bar">
+    <div class="status-bar">
         <div class="status-indicator" id="status-indicator"></div>
         <span class="status-text" id="status-text">Initializing...</span>
-        <div class="progress-bar" id="progress-bar">
-            <div class="progress-fill" id="progress-fill"></div>
-        </div>
     </div>
 
     <div class="command-section">
-        <div class="autocomplete-wrapper">
-            <input type="text" id="command-input" placeholder="Enter a command (e.g., ls, uname -a, cat /etc/os-release)" disabled autocomplete="off" aria-expanded="false" aria-haspopup="listbox" aria-autocomplete="list">
-            <div id="autocomplete-dropdown" class="autocomplete-dropdown" role="listbox" aria-label="Command suggestions"></div>
-        </div>
+        <input type="text" id="command-input" placeholder="Enter a command (e.g., ls, uname -a, cat /etc/os-release)" disabled>
         <button id="run-btn" disabled>Run</button>
         <button id="cancel-btn" class="cancel-btn" style="display: none;">Cancel</button>
         <div class="timer-container">
@@ -533,7 +273,6 @@
 
     <div class="button-row">
         <button id="clear-btn" class="secondary-btn">Clear Output</button>
-        <button id="save-output-btn" class="secondary-btn">Save Output</button>
         <button id="restart-btn" class="secondary-btn danger-btn">Restart Linux</button>
         <button id="toggle-screen" class="toggle-screen">Show VGA Screen</button>
     </div>
@@ -546,224 +285,22 @@
     <div class="info">
         <strong>About:</strong> This tool runs a minimal Linux distribution (Buildroot) inside your browser using
         <a href="https://github.com/copy/v86" target="_blank">v86</a>, an x86 emulator written in JavaScript/WebAssembly.
-        <br><br>
-        <strong>CTF Challenges:</strong> All challenges are automatically loaded when the emulator boots.
-        Run 'ls' in the root directory to see challenge folders, then 'cd' into any challenge and run 'ls' again to see the challenge files.
-        <br><br>
-        <strong>Performance Optimizations:</strong>
-        <ul style="margin: 8px 0 0 0; padding-left: 20px;">
-            <li><strong>Preconnect hints:</strong> Early DNS/TCP/TLS connection to CDN servers reduces latency</li>
-            <li><strong>Resource preloading:</strong> WASM, BIOS, and kernel images load in parallel before initialization</li>
-            <li><strong>Optimized memory:</strong> 64MB RAM allocation balances performance with browser memory usage</li>
-            <li><strong>Progress tracking:</strong> Visual feedback shows loading stages for better user experience</li>
-        </ul>
-        Boot time is typically 10-30 seconds depending on your connection and device. The main bottleneck is downloading the ~68MB kernel image.
+        Boot time is typically 10-30 seconds depending on your connection and device.
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js"></script>
     <script>
-        // Helper function to check if running on file:// protocol
-        function isFileProtocol() {
-            return window.location.protocol === 'file:';
-        }
-
-        // Error message for file:// protocol
-        const FILE_PROTOCOL_ERROR_MSG = `Cannot load challenges when opening HTML file directly.
-
-Please run a local web server instead:
-
-Option 1 - Python:
-  python3 -m http.server 8000
-  Then visit: http://localhost:8000
-
-Option 2 - Node.js:
-  npx http-server -p 8000
-  Then visit: http://localhost:8000
-
-Option 3 - PHP:
-  php -S localhost:8000
-  Then visit: http://localhost:8000`;
-
-        const FILE_PROTOCOL_TERMINAL_MSG = '\n[✗ Error: Cannot load challenges from file:// protocol]\n[Please run a local web server - see the alert for instructions]\n\n';
-
-        // Common Linux commands for autocomplete
-        const commonCommands = [
-            'ls', 'ls -la', 'ls -l', 'ls -a',
-            'cd', 'cd ..', 'cd ~',
-            'pwd',
-            'cat', 'cat /etc/os-release', 'cat /etc/passwd',
-            'echo', 'echo "Hello World"',
-            'mkdir', 'rmdir',
-            'rm', 'rm -rf',
-            'cp', 'mv',
-            'touch',
-            'grep', 'grep -r',
-            'find', 'find . -name',
-            'chmod', 'chown',
-            'ps', 'ps aux',
-            'top', 'htop',
-            'kill', 'killall',
-            'df', 'df -h',
-            'du', 'du -sh',
-            'free', 'free -h',
-            'uptime',
-            'uname', 'uname -a', 'uname -r',
-            'whoami', 'who',
-            'date',
-            'cal',
-            'history',
-            'clear',
-            'man',
-            'which',
-            'whereis',
-            'tar', 'tar -xzf', 'tar -czf',
-            'gzip', 'gunzip',
-            'zip', 'unzip',
-            'wget', 'curl',
-            'ssh', 'scp',
-            'ping',
-            'ifconfig', 'ip addr',
-            'netstat',
-            'head', 'tail',
-            'less', 'more',
-            'wc', 'wc -l',
-            'sort', 'uniq',
-            'awk', 'sed',
-            'vi', 'vim', 'nano',
-            'mount', 'umount',
-            'ln', 'ln -s'
-        ].sort();
-
-        // CTF Challenge metadata
-        const challenges = {
-            'challenge1-hidden-files': {
-                name: 'Hidden Files Explorer',
-                difficulty: 'easy',
-                description: 'Learn to find and examine hidden files in Linux systems.'
-            },
-            'challenge2-process-detective': {
-                name: 'Process Detective',
-                difficulty: 'easy',
-                description: 'Master process management and monitoring commands.'
-            },
-            'challenge3-network-navigator': {
-                name: 'Network Navigator',
-                difficulty: 'medium',
-                description: 'Explore network configuration and troubleshooting.'
-            },
-            'challenge4-log-forensics': {
-                name: 'Log File Forensics',
-                difficulty: 'medium',
-                description: 'Investigate system logs to uncover critical information.'
-            },
-            'challenge5-permission-puzzle': {
-                name: 'Permission Puzzle',
-                difficulty: 'medium',
-                description: 'Navigate complex file permission scenarios.'
-            },
-            'challenge6-archive-archaeology': {
-                name: 'Archive Archaeology',
-                difficulty: 'hard',
-                description: 'Extract and analyze nested archive files.'
-            },
-            'challenge7-script-debugger': {
-                name: 'Script Debugger',
-                difficulty: 'hard',
-                description: 'Debug and fix broken shell scripts.'
-            },
-            'challenge8-intrusion-analysis': {
-                name: 'System Intrusion Analysis',
-                difficulty: 'very hard',
-                description: 'Perform forensic analysis on a compromised system.'
-            }
-        };
-
-        // CTF Challenge file manifests - lists all files to load for each challenge
-        // Files are loaded directly from ctf-collection folder without executing any scripts
-        const challengeFiles = {
-            'challenge1-hidden-files': [
-                { path: 'README.md', executable: false },
-                { path: 'mystery_dir/.cache', executable: false },
-                { path: 'mystery_dir/.config/settings', executable: false },
-                { path: 'mystery_dir/.secrets/.clue', executable: false },
-                { path: 'mystery_dir/.secrets/.hidden_treasure', executable: false },
-                { path: 'mystery_dir/documents/report.txt', executable: false },
-                { path: 'mystery_dir/note.txt', executable: false },
-                { path: 'mystery_dir/readme.txt', executable: false }
-            ],
-            'challenge4-log-forensics': [
-                { path: 'README.md', executable: false },
-                { path: 'access.log', executable: false }
-            ],
-            'challenge7-script-debugger': [
-                { path: '.solution_script.sh', executable: true },
-                { path: 'README.md', executable: false },
-                { path: 'broken_script.sh', executable: false }
-            ],
-            'challenge8-intrusion-analysis': [
-                { path: 'README.md', executable: false },
-                { path: 'incident/.bash_history', executable: false },
-                { path: 'incident/investigation_notes.txt', executable: false },
-                { path: 'incident/logs/auth.log', executable: false },
-                { path: 'incident/suspicious_files/.attacker_data/.hidden_flag.txt', executable: false },
-                { path: 'incident/suspicious_files/README.txt', executable: false },
-                { path: 'incident/suspicious_files/suspicious_script.sh', executable: true },
-                { path: 'incident/timeline.txt', executable: false }
-            ]
-        };
-
-        // Function to get the base URL for GitHub Pages
-        function getBaseUrl() {
-            // Detect if we're on GitHub Pages or localhost
-            const hostname = window.location.hostname;
-            
-            // Common logic: get the base path by removing the filename from pathname
-            const basePath = window.location.pathname.replace(/\/[^/]*$/, '');
-            
-            // For localhost and GitHub Pages, use origin + base path
-            if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('github.io')) {
-                return window.location.origin + basePath;
-            }
-            
-            // For file:// protocol, return null to trigger error handling
-            if (isFileProtocol()) {
-                return null;
-            }
-            
-            // Fallback to relative path for other environments
-            return '.';
-        }
-
-        // Function to get challenge base URL
-        function getChallengeBaseUrl(challengeId) {
-            const baseUrl = getBaseUrl();
-            if (baseUrl === null) {
-                return null; // file:// protocol detected
-            }
-            return `${baseUrl}/ctf-collection/${challengeId}`;
-        }
-
         const statusIndicator = document.getElementById('status-indicator');
         const statusText = document.getElementById('status-text');
-        const statusBar = document.getElementById('status-bar');
-        const startContainer = document.getElementById('start-container');
-        const startEmulatorBtn = document.getElementById('start-emulator-btn');
-        const progressBar = document.getElementById('progress-bar');
-        const progressFill = document.getElementById('progress-fill');
         const commandInput = document.getElementById('command-input');
         const runBtn = document.getElementById('run-btn');
         const cancelBtn = document.getElementById('cancel-btn');
         const timerEl = document.getElementById('timer');
         const clearBtn = document.getElementById('clear-btn');
-        const saveOutputBtn = document.getElementById('save-output-btn');
         const restartBtn = document.getElementById('restart-btn');
         const output = document.getElementById('output');
         const toggleScreenBtn = document.getElementById('toggle-screen');
         const screenContainer = document.getElementById('screen-container');
-        const autocompleteDropdown = document.getElementById('autocomplete-dropdown');
-        const challengeSelect = document.getElementById('challenge-select');
-        const loadChallengeBtn = document.getElementById('load-challenge-btn');
-        const challengeInfo = document.getElementById('challenge-info');
 
         let emulator = null;
         let isReady = false;
@@ -775,118 +312,13 @@ Option 3 - PHP:
         let timerStart = 0;
         let outputTruncated = false;
         let drainingOutput = false; // When true, discard output until we see a prompt
-        // Prompt patterns - match various shell prompts (ash/sh: "$ ", csh/tcsh: "% ", root: "# ")
-        // Also handles prompts with path prefixes like "~% ", "/home/user$ ", etc.
+        // Prompt pattern - match various shell prompts (ash/sh: "$ ", csh/tcsh: "% ", root: "# ")
         const promptPattern = /[$%#>]\s*$/;
         const maxOutputSize = 50000; // Truncate output after 50KB
-        let sessionOutput = ''; // Store complete terminal session for saving
-        let commandQueue = []; // Queue for commands waiting to execute
-        let isExecutingCommand = false; // Flag to prevent concurrent command execution
-
-        // Autocomplete state
-        let selectedIndex = -1;
-        let filteredCommands = [];
-
-        function showAutocomplete(commands) {
-            if (commands.length === 0) {
-                hideAutocomplete();
-                return;
-            }
-
-            filteredCommands = commands;
-            selectedIndex = -1;
-            autocompleteDropdown.innerHTML = '';
-
-            commands.forEach((cmd, index) => {
-                const item = document.createElement('div');
-                item.className = 'autocomplete-item';
-                item.textContent = cmd;
-                item.setAttribute('role', 'option');
-                item.addEventListener('click', () => {
-                    commandInput.value = cmd;
-                    hideAutocomplete();
-                    commandInput.focus();
-                });
-                autocompleteDropdown.appendChild(item);
-            });
-
-            autocompleteDropdown.classList.add('show');
-            commandInput.setAttribute('aria-expanded', 'true');
-        }
-
-        function hideAutocomplete() {
-            autocompleteDropdown.classList.remove('show');
-            autocompleteDropdown.innerHTML = '';
-            filteredCommands = [];
-            selectedIndex = -1;
-            commandInput.setAttribute('aria-expanded', 'false');
-        }
-
-        function updateAutocomplete() {
-            const value = commandInput.value.trim();
-            
-            if (!value) {
-                hideAutocomplete();
-                return;
-            }
-
-            const matches = commonCommands.filter(cmd => 
-                cmd.toLowerCase().startsWith(value.toLowerCase())
-            );
-
-            showAutocomplete(matches);
-        }
-
-        function selectAutocompleteItem(index) {
-            const items = autocompleteDropdown.querySelectorAll('.autocomplete-item');
-            items.forEach((item, i) => {
-                item.classList.toggle('selected', i === index);
-            });
-
-            // Scroll selected item into view
-            if (items[index]) {
-                items[index].scrollIntoView({ block: 'nearest' });
-            }
-        }
-
-        function handleAutocompleteKeydown(e) {
-            if (!autocompleteDropdown.classList.contains('show')) {
-                return false;
-            }
-
-            const items = autocompleteDropdown.querySelectorAll('.autocomplete-item');
-            
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                selectedIndex = (selectedIndex + 1) % items.length;
-                selectAutocompleteItem(selectedIndex);
-                return true;
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                selectedIndex = selectedIndex <= 0 ? items.length - 1 : selectedIndex - 1;
-                selectAutocompleteItem(selectedIndex);
-                return true;
-            } else if (e.key === 'Enter' && selectedIndex >= 0) {
-                e.preventDefault();
-                commandInput.value = filteredCommands[selectedIndex];
-                hideAutocomplete();
-                return true;
-            } else if (e.key === 'Escape') {
-                hideAutocomplete();
-                return true;
-            }
-
-            return false;
-        }
 
         function updateStatus(state, text) {
             statusIndicator.className = 'status-indicator ' + state;
             statusText.textContent = text;
-        }
-
-        function updateProgress(percent, text) {
-            progressFill.style.width = percent + '%';
-            if (text) updateStatus('booting', text);
         }
 
         // Convert ANSI color codes to HTML spans
@@ -950,13 +382,11 @@ Option 3 - PHP:
         function appendOutput(text) {
             output.innerHTML += ansiToHtml(text);
             output.scrollTop = output.scrollHeight;
-            sessionOutput += text; // Store raw text for saving
         }
 
         function setOutput(text) {
             output.innerHTML = ansiToHtml(text);
             output.scrollTop = output.scrollHeight;
-            sessionOutput = text; // Replace session output (not append)
         }
 
         function startTimer() {
@@ -981,217 +411,58 @@ Option 3 - PHP:
         function cancelCommand() {
             if (!emulator || !waitingForOutput) return;
 
-            try {
-                // Send Ctrl+C (ASCII 3) multiple times, then Ctrl+\ (SIGQUIT) as backup
-                if (emulator.serial0_send) {
-                    emulator.serial0_send('\x03');
-                    setTimeout(() => {
-                        if (emulator && emulator.serial0_send) {
-                            emulator.serial0_send('\x03');
-                        }
-                    }, 100);
-                    setTimeout(() => {
-                        if (emulator && emulator.serial0_send) {
-                            emulator.serial0_send('\x03');
-                        }
-                    }, 200);
-                    setTimeout(() => {
-                        if (emulator && emulator.serial0_send) {
-                            emulator.serial0_send('\x1c'); // Ctrl+\ = SIGQUIT
-                        }
-                    }, 300);
+            // Send Ctrl+C (ASCII 3) multiple times, then Ctrl+\ (SIGQUIT) as backup
+            emulator.serial0_send('\x03');
+            setTimeout(() => emulator.serial0_send('\x03'), 100);
+            setTimeout(() => emulator.serial0_send('\x03'), 200);
+            setTimeout(() => emulator.serial0_send('\x1c'), 300); // Ctrl+\ = SIGQUIT
+
+            appendOutput('^C\n');
+
+            // Enter draining mode - discard output until we see a fresh prompt
+            drainingOutput = true;
+            outputBuffer = '';
+
+            // Forcefully reset UI state after a short delay
+            // (in case the command is blocked on I/O and can't process signals)
+            setTimeout(() => {
+                if (waitingForOutput) {
+                    waitingForOutput = false;
+                    commandOutput = '';
+                    stopTimer();
+                    commandInput.disabled = false;
+                    runBtn.disabled = false;
+                    appendOutput('[cancelled]\n');
+                    commandInput.focus();
                 }
-
-                appendOutput('^C\n');
-
-                // Enter draining mode - discard output until we see a fresh prompt
-                drainingOutput = true;
-                outputBuffer = '';
-
-                // Forcefully reset UI state after a short delay
-                // (in case the command is blocked on I/O and can't process signals)
-                setTimeout(() => {
-                    if (waitingForOutput) {
-                        waitingForOutput = false;
-                        commandOutput = '';
-                        stopTimer();
-                        commandInput.disabled = false;
-                        runBtn.disabled = false;
-                        appendOutput('[cancelled]\n');
-                        commandInput.focus();
-                    }
-                }, 500);
-            } catch (error) {
-                console.error('Error cancelling command:', error);
-                // Force reset UI state even on error
-                waitingForOutput = false;
-                commandOutput = '';
-                stopTimer();
-                commandInput.disabled = false;
-                runBtn.disabled = false;
-                appendOutput('[Error cancelling command, reset UI]\n');
-                commandInput.focus();
-            }
-        }
-
-        /**
-         * Load challenge files into a specific directory
-         * @param {string} challengeId - The challenge identifier
-         * @returns {Promise} Resolves when challenge is loaded
-         */
-        async function setupChallengeFiles(challengeId) {
-            const baseUrl = getChallengeBaseUrl(challengeId);
-            if (!baseUrl) {
-                throw new Error('Cannot load challenges from file:// protocol or invalid base URL');
-            }
-
-            // Get the file manifest for this challenge
-            const files = challengeFiles[challengeId];
-            if (!files || files.length === 0) {
-                throw new Error(`No files configured for challenge: ${challengeId}`);
-            }
-
-            // Create the challenge directory
-            await sendCommandAndWait(`mkdir -p ${escapeShell(challengeId)}`);
-
-            // Load each file from the manifest
-            for (const fileInfo of files) {
-                const filePath = fileInfo.path;
-                const fullUrl = `${baseUrl}/${filePath}`;
-                
-                // Fetch the file content
-                const fileContent = await fetchChallengeFile(fullUrl, `${challengeId}/${filePath}`);
-                
-                // Determine the directory path for this file
-                const filePathParts = filePath.split('/');
-                const dirPath = filePathParts.slice(0, -1).join('/');
-                
-                // Create any necessary subdirectories
-                if (dirPath) {
-                    await sendCommandAndWait(`mkdir -p ${escapeShell(`${challengeId}/${dirPath}`)}`);
-                }
-                
-                // Write the file content
-                const base64Content = safeBase64Encode(fileContent);
-                const targetPath = `${challengeId}/${filePath}`;
-                await sendCommandAndWait(`echo -n ${escapeShell(base64Content)} | base64 -d > ${escapeShell(targetPath)}`);
-                
-                // Set executable permission if needed
-                if (fileInfo.executable) {
-                    await sendCommandAndWait(`chmod +x ${escapeShell(targetPath)}`);
-                }
-            }
-        }
-
-        /**
-         * Initialize the CTF filesystem by creating directories and README
-         */
-        async function initializeCTFFilesystem() {
-            try {
-                // Define the README.md content
-                const readmeContent = `Welcome to the CTF Challenges!
-
-Each folder corresponds to a CTF challenge.
-Navigate into a specific folder using 'cd' to begin a challenge.
-Follow any instructions or hints provided in each challenge directory.`;
-
-                // Create the README.md file in the root directory
-                const base64Readme = safeBase64Encode(readmeContent);
-                await sendCommandAndWait(`echo -n ${escapeShell(base64Readme)} | base64 -d > README.md`);
-
-                // Load all challenges automatically so directories are pre-populated
-                // Note: Sequential loading is required to prevent race conditions
-                // in the emulator's command queue
-                const challengeDirs = Object.keys(challenges);
-                const loadedChallenges = [];
-                const failedChallenges = [];
-
-                for (const dir of challengeDirs) {
-                    try {
-                        await setupChallengeFiles(dir);
-                        loadedChallenges.push(dir);
-                    } catch (error) {
-                        console.error(`Failed to load challenge ${dir}:`, error);
-                        console.error('Possible causes: network issues, missing files in ctf-collection, or file:// protocol');
-                        failedChallenges.push({ name: dir, error: error.message });
-                        // Continue loading other challenges even if one fails
-                    }
-                }
-
-                // Log summary of what was loaded
-                console.log(`Loaded ${loadedChallenges.length}/${challengeDirs.length} challenges`);
-                if (failedChallenges.length > 0) {
-                    console.warn('Failed to load challenges:', failedChallenges);
-                }
-
-                return true;
-            } catch (error) {
-                console.error('Error initializing CTF filesystem:', error);
-                throw error;
-            }
+            }, 500);
         }
 
         async function initEmulator() {
-            // Performance Optimization: Track loading progress for better UX
-            updateProgress(0, 'Initializing emulator...');
+            updateStatus('booting', 'Loading emulator...');
 
             try {
-                // Validate that V86 constructor is available
-                if (typeof window.V86 === 'undefined' || !window.V86) {
-                    throw new Error('V86 library not loaded. Please refresh the page.');
-                }
-
-                // Validate screen container exists
-                if (!screenContainer) {
-                    throw new Error('Screen container element (id="screen-container") not found in DOM');
-                }
-
-                // Performance Optimization: V86 emulator configuration optimized for fast boot
-                // - Resources are preloaded via <link rel="preload"> tags in <head>
-                // - Browser fetches WASM, BIOS, and kernel in parallel before this code runs
-                // - Preconnect hints reduce DNS/TCP/TLS latency for CDN resources
                 emulator = new V86({
-                    // WASM path: Core emulator engine (already preloaded for faster initialization)
                     wasm_path: 'https://cdn.jsdelivr.net/npm/v86@latest/build/v86.wasm',
-                    
-                    // Memory optimization: 64MB is sufficient for basic Linux shell operations
-                    // Smaller memory = faster initialization, less browser memory pressure
                     memory_size: 64 * 1024 * 1024,
                     vga_memory_size: 2 * 1024 * 1024,
-                    
                     screen_container: screenContainer,
-                    
-                    // BIOS files: Essential boot firmware (preloaded, ~128KB total)
                     bios: {
                         url: 'https://cdn.jsdelivr.net/gh/copy/v86@master/bios/seabios.bin'
                     },
                     vga_bios: {
                         url: 'https://cdn.jsdelivr.net/gh/copy/v86@master/bios/vgabios.bin'
                     },
-                    
-                    // Disk image: CTF root filesystem image (~10 MB)
-                    // NOTE: `ctf-basic.img` must be present in the same directory as this index.html
-                    // (or the URL below must be updated to a valid absolute/relative path) or the
-                    // emulator will fail to boot because the disk image cannot be loaded.
                     hda: {
                         url: 'ctf-basic.img',
                         async: true
                     },
-                    
-                    // Performance: Auto-start immediately when resources are ready
                     autostart: true,
-                    
-                    // Optimization: Disable unused input devices to reduce overhead
                     disable_keyboard: true,
                     disable_mouse: true
                 });
 
-                // Validate emulator was created successfully
-                if (!emulator) {
-                    throw new Error('Failed to create V86 emulator instance');
-                }
-
-                updateProgress(30, 'Loading kernel and BIOS...');
+                updateStatus('booting', 'Booting Linux...');
 
                 emulator.add_listener('serial0-output-byte', function(byte) {
                     const char = String.fromCharCode(byte);
@@ -1200,11 +471,10 @@ Follow any instructions or hints provided in each challenge directory.`;
                     // In draining mode, just watch for prompt to know system is ready again
                     if (drainingOutput) {
                         outputBuffer += char;
-                        // Keep buffer reasonably sized while draining (50 chars to catch full prompts)
+                        // Keep buffer small while draining
                         if (outputBuffer.length > 50) {
                             outputBuffer = outputBuffer.slice(-50);
                         }
-                        // Check the buffer for prompt pattern
                         if (promptPattern.test(outputBuffer)) {
                             drainingOutput = false;
                             outputBuffer = '';
@@ -1226,20 +496,17 @@ Follow any instructions or hints provided in each challenge directory.`;
                         }
 
                         // Wait for shell prompt to reappear (command completed)
-                        // Prompt can be various formats: "$ ", "% ", "# ", "> " with optional paths
-                        // Examples: "~% ", "~/subdir$ ", "/path# ", etc.
                         // Check the last ~50 chars of buffer for prompt pattern
                         const lastChars = outputBuffer.slice(-50);
                         if (promptPattern.test(lastChars)) {
                             waitingForOutput = false;
 
                             // Parse output: skip echoed command, capture until prompt
-                            // Format: "command\noutput line 1\noutput line 2\nprompt% "
                             let lines = commandOutput.split('\n');
 
                             // Remove the echoed command (first line) and prompt (last element)
                             let resultLines = lines.slice(1); // Skip echoed command
-                            // Remove trailing prompt remnants (any line ending with "% " or empty)
+                            // Remove trailing prompt remnants
                             while (resultLines.length > 0) {
                                 const last = resultLines[resultLines.length - 1];
                                 if (last === '' || promptPattern.test(last)) {
@@ -1262,66 +529,29 @@ Follow any instructions or hints provided in each challenge directory.`;
                     }
 
                     // Detect when boot is complete (shell prompt appears)
-                    // Check last 50 chars for better reliability
                     const lastChars = outputBuffer.slice(-50);
                     if (!isReady && promptPattern.test(lastChars)) {
                         isReady = true;
-                        updateProgress(100, 'Setting up CTF environment...');
-                        updateStatus('booting', 'Setting up CTF environment...');
-                        setOutput('Linux booted successfully. Initializing CTF challenges...\n\n');
-                        
-                        // Helper function to enable UI after boot
-                        const enableUI = () => {
-                            commandInput.disabled = false;
-                            runBtn.disabled = false;
-                            commandInput.focus();
-                        };
-                        
-                        // Initialize the CTF collection filesystem
-                        initializeCTFFilesystem().then(() => {
-                            updateStatus('ready', 'Linux is ready');
-                            appendOutput('[✓ CTF environment ready! Type "ls" to see available challenges]\n\n');
-                            enableUI();
-                        }).catch(error => {
-                            console.error('Failed to initialize CTF filesystem:', error);
-                            updateStatus('ready', 'Linux is ready (CTF setup failed)');
-                            appendOutput('[✗ Warning: CTF setup failed, but emulator is ready]\n\n');
-                            enableUI();
-                        });
+                        updateStatus('ready', 'Linux is ready');
+                        commandInput.disabled = false;
+                        runBtn.disabled = false;
+                        setOutput('Linux booted successfully. Enter a command above.\n\n');
+                        commandInput.focus();
                     }
                 });
 
                 emulator.add_listener('emulator-started', function() {
-                    updateProgress(50, 'Emulator started, booting Linux...');
+                    updateStatus('booting', 'Emulator started, booting Linux...');
                 });
-
-                // Performance: Additional progress tracking for download events
-                // Note: V86 doesn't expose granular download events, but we simulate progress
-                updateProgress(20, 'Downloading resources...');
 
             } catch (error) {
                 updateStatus('', 'Error: ' + error.message);
-                updateProgress(0, '');
                 console.error('Failed to initialize emulator:', error);
             }
         }
 
         function sendCommand(cmd) {
-            if (!emulator || !isReady) {
-                console.warn('Cannot send command: emulator not ready');
-                return;
-            }
-
-            // Validate command is a string and not empty
-            if (typeof cmd !== 'string') {
-                console.error('Invalid command type:', typeof cmd);
-                appendOutput('[Error: Invalid command]\n');
-                return;
-            }
-            if (!cmd || cmd.trim() === '') {
-                console.warn('Empty command, ignoring');
-                return;
-            }
+            if (!emulator || !isReady) return;
 
             currentCommand = cmd;
             commandOutput = '';
@@ -1337,24 +567,7 @@ Follow any instructions or hints provided in each challenge directory.`;
             startTimer();
 
             // Send command - completion detected when shell prompt reappears
-            // Wrap in try-catch to handle potential WASM errors gracefully
-            try {
-                if (!emulator.serial0_send) {
-                    throw new Error('Emulator serial interface not available');
-                }
-                emulator.serial0_send(cmd + '\n');
-            } catch (error) {
-                console.error('Error sending command to emulator:', error);
-                appendOutput('[Error: Failed to send command to emulator]\n');
-                appendOutput('[Details: ' + error.message + ']\n');
-                
-                // Reset UI state on error
-                waitingForOutput = false;
-                stopTimer();
-                commandInput.disabled = false;
-                runBtn.disabled = false;
-                commandInput.focus();
-            }
+            emulator.serial0_send(cmd + '\n');
         }
 
         runBtn.addEventListener('click', function() {
@@ -1366,59 +579,17 @@ Follow any instructions or hints provided in each challenge directory.`;
         });
 
         commandInput.addEventListener('keydown', function(e) {
-            // Handle autocomplete navigation first
-            if (handleAutocompleteKeydown(e)) {
-                return;
-            }
-
             if (e.key === 'Enter') {
                 const cmd = commandInput.value.trim();
                 if (cmd) {
                     sendCommand(cmd);
                     commandInput.value = '';
-                    hideAutocomplete();
                 }
-            }
-        });
-
-        // Add input event listener for autocomplete
-        commandInput.addEventListener('input', function() {
-            updateAutocomplete();
-        });
-
-        // Hide autocomplete when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.autocomplete-wrapper')) {
-                hideAutocomplete();
             }
         });
 
         clearBtn.addEventListener('click', function() {
             setOutput('');
-        });
-
-        saveOutputBtn.addEventListener('click', function() {
-            // Create a blob with the session output
-            const blob = new Blob([sessionOutput], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            
-            // Create a temporary link and trigger download
-            const link = document.createElement('a');
-            link.href = url;
-            
-            // Generate filename with timestamp
-            const now = new Date();
-            // Remove milliseconds and 'Z' from ISO string: 2026-01-14T13:09:13.321Z -> 2026-01-14T13-09-13
-            const timestamp = now.toISOString().split('.')[0].replace(/:/g, '-');
-            link.download = `terminal-session-${timestamp}.txt`;
-            
-            // Trigger download
-            document.body.appendChild(link);
-            link.click();
-            
-            // Clean up
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
         });
 
         cancelBtn.addEventListener('click', cancelCommand);
@@ -1433,296 +604,8 @@ Follow any instructions or hints provided in each challenge directory.`;
             location.reload();
         });
 
-        // =============================================================================
-        // Challenge Loading System
-        // =============================================================================
-        // This section implements dynamic challenge loading into the Linux emulator.
-        // Challenges are fetched directly from the ctf-collection folder via AJAX
-        // and loaded into the running emulator by executing commands to create
-        // the necessary files and directories.
-        // =============================================================================
-
-        /**
-         * Escape a string for safe use in shell commands
-         * @param {string} str - The string to escape
-         * @returns {string} Shell-escaped string
-         */
-        function escapeShell(str) {
-            // Replace single quotes with '\'' (end quote, escaped quote, start quote)
-            // This works in all POSIX shells and is safer than trying to escape special chars
-            return "'" + str.replace(/'/g, "'\\''") + "'";
-        }
-
-        /**
-         * Safely encode content to base64, handling both text and binary data
-         * @param {string} content - The content to encode
-         * @returns {string} Base64 encoded content
-         */
-        function safeBase64Encode(content) {
-            try {
-                // For ASCII-only content, btoa works fine
-                return btoa(content);
-            } catch (e) {
-                // For content with non-Latin1 characters, use TextEncoder
-                const encoder = new TextEncoder();
-                const uint8Array = encoder.encode(content);
-                let binary = '';
-                uint8Array.forEach(byte => {
-                    binary += String.fromCharCode(byte);
-                });
-                return btoa(binary);
-            }
-        }
-
-        /**
-         * Helper function to fetch a challenge file
-         * @param {string} url - The URL to fetch
-         * @param {string} description - Description of the file (for error messages)
-         * @returns {Promise<string>} The file content
-         */
-        async function fetchChallengeFile(url, description) {
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch ${description}: ${response.statusText}`);
-            }
-            return await response.text();
-        }
-
-        /**
-         * Display information about a challenge
-         * Note: All challenges are pre-loaded during boot. This function provides
-         * helpful navigation information to users.
-         * @param {string} challengeId - The challenge identifier
-         */
-        async function loadChallengeIntoEmulator(challengeId) {
-            if (!emulator || !isReady) {
-                alert('Please wait for the emulator to finish booting before loading a challenge.');
-                return;
-            }
-
-            const challenge = challenges[challengeId];
-            if (!challenge) {
-                console.error('Challenge not found:', challengeId);
-                return;
-            }
-
-            // Simply inform the user about the challenge and how to access it
-            appendOutput(`\n[Challenge: ${challenge.name}]\n`);
-            appendOutput(`[All challenges were loaded during boot]\n`);
-            appendOutput(`[Navigate to the directory: cd ${challengeId}]\n`);
-            appendOutput(`[List files: ls]\n`);
-            appendOutput(`[Read the instructions: cat README.md]\n\n`);
-            
-            // Update button state
-            loadChallengeBtn.textContent = '✓ Ready!';
-            setTimeout(() => {
-                loadChallengeBtn.textContent = 'Show Info';
-            }, 2000);
-        }
-
-        /**
-         * Send a command to the emulator and wait for it to complete
-         * @param {string} cmd - The command to execute
-         * @param {number} timeout - Optional timeout in milliseconds (default: 30000)
-         * @returns {Promise} Resolves when command completes, rejects if emulator not ready or timeout
-         * 
-         * Note: This function resolves even if the command fails to send (e.g., emulator error).
-         * This allows command queues to continue processing even if individual commands fail.
-         * Check console logs for errors if commands don't execute as expected.
-         */
-        function sendCommandAndWait(cmd, timeout = 30000) {
-            return new Promise((resolve, reject) => {
-                if (!emulator || !isReady) {
-                    // Reject if emulator is not ready to prevent race conditions
-                    reject(new Error('Emulator not ready'));
-                    return;
-                }
-
-                // Queue the command to prevent race conditions
-                commandQueue.push({ cmd, resolve, reject, timeout });
-                
-                // If not currently executing, process the queue
-                if (!isExecutingCommand) {
-                    processCommandQueue();
-                }
-            });
-        }
-
-        /**
-         * Process queued commands one at a time to prevent race conditions
-         */
-        function processCommandQueue() {
-            if (commandQueue.length === 0 || isExecutingCommand) {
-                return;
-            }
-
-            isExecutingCommand = true;
-            const { cmd, resolve, reject, timeout } = commandQueue.shift();
-
-            // Set up command execution state
-            currentCommand = cmd;
-            commandOutput = '';
-            outputTruncated = false;
-            
-            // Don't clear outputBuffer - it may contain partial prompt from previous command
-            // Clearing it could lose prompt detection data and cause missed command completions
-            // Instead, just mark that we're waiting for new output
-            waitingForOutput = true;
-
-            // Send command with error handling
-            try {
-                if (!emulator || !emulator.serial0_send) {
-                    throw new Error('Emulator serial interface not available');
-                }
-                emulator.serial0_send(cmd + '\n');
-            } catch (error) {
-                console.error('Error sending queued command:', cmd);
-                console.error('Error details:', error);
-                // Reset state and continue with next command
-                // Note: We resolve (not reject) to allow the queue to continue processing
-                // This is intentional - individual command failures shouldn't halt the entire queue
-                waitingForOutput = false;
-                isExecutingCommand = false;
-                resolve(); // Resolve to allow queue to continue
-                setTimeout(() => processCommandQueue(), 100);
-                return;
-            }
-
-            // Set up completion handler
-            let completed = false;
-            const checkInterval = setInterval(() => {
-                if (!waitingForOutput && !completed) {
-                    completed = true;
-                    clearInterval(checkInterval);
-                    isExecutingCommand = false;
-                    resolve();
-                    
-                    // Process next command in queue after brief delay
-                    setTimeout(() => processCommandQueue(), 100);
-                }
-            }, 100); // Poll every 100ms for command completion
-
-            // Timeout handler with more aggressive cleanup
-            setTimeout(() => {
-                if (!completed) {
-                    completed = true;
-                    clearInterval(checkInterval);
-                    
-                    if (waitingForOutput) {
-                        console.warn(`Command timed out after ${timeout/1000}s: ${cmd}`);
-                        
-                        // Force reset state to prevent cascade failures
-                        waitingForOutput = false;
-                        outputBuffer = '';
-                        commandOutput = '';
-                        
-                        // Send Ctrl+C to try to stop hung command (with error handling)
-                        try {
-                            if (emulator && emulator.serial0_send) {
-                                emulator.serial0_send('\x03');
-                            }
-                        } catch (error) {
-                            console.error('Error sending cancel signal on timeout:', error);
-                        }
-                        
-                        appendOutput(`\n[Command timeout - sent cancel signal]\n`);
-                    }
-                    
-                    isExecutingCommand = false;
-                    
-                    // Wait 200ms before processing next command to allow system recovery
-                    // after timeout (gives emulator time to process Ctrl+C and stabilize)
-                    setTimeout(() => processCommandQueue(), 200);
-                    
-                    // Resolve (not reject) to allow loading to continue
-                    resolve();
-                }
-            }, timeout);
-        }
-
-        // =============================================================================
-        // Challenge Selection Event Handlers
-        // =============================================================================
-        // These handlers manage the CTF challenge dropdown and info button.
-        // When a challenge is selected, the UI is updated with challenge details.
-        // When "Show Info" is clicked, navigation instructions are displayed in the terminal.
-        // All challenges are pre-loaded during boot, so this just provides user guidance.
-        // =============================================================================
-
-        // Challenge selection handlers
-        challengeSelect.addEventListener('change', function() {
-            const selectedValue = this.value;
-            
-            if (!selectedValue) {
-                // No challenge selected
-                loadChallengeBtn.disabled = true;
-                challengeInfo.classList.remove('visible');
-                challengeInfo.innerHTML = '';
-                return;
-            }
-
-            const challenge = challenges[selectedValue];
-            if (!challenge) return;
-
-            // Enable load button only if emulator is ready
-            loadChallengeBtn.disabled = !isReady;
-
-            // Show challenge info with proper HTML escaping
-            const difficultyClass = challenge.difficulty.replace(/\s+/g, '-');
-            
-            // Helper function to escape HTML
-            const escapeHtml = (text) => {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
-            };
-            
-            challengeInfo.innerHTML = `
-                <strong>${escapeHtml(challenge.name)}</strong>
-                <span class="difficulty ${difficultyClass}">${escapeHtml(challenge.difficulty.toUpperCase())}</span>
-                <br>
-                <span style="color: var(--text); margin-top: 5px; display: block;">${escapeHtml(challenge.description)}</span>
-                <br>
-                <small style="color: #666;">This challenge is already loaded. Navigate to it with: cd ${escapeHtml(selectedValue)}</small>
-            `;
-            challengeInfo.classList.add('visible');
-        });
-
-        // Load challenge button handler
-        loadChallengeBtn.addEventListener('click', function() {
-            const selectedValue = challengeSelect.value;
-            if (!selectedValue) return;
-
-            loadChallengeIntoEmulator(selectedValue);
-        });
-
-        // Check for file:// protocol and show warning
-        if (isFileProtocol()) {
-            const warningEl = document.getElementById('file-protocol-warning');
-            if (warningEl) {
-                warningEl.classList.add('visible');
-            }
-        }
-
-        // Start emulator button handler - ensures AudioContext is created after user gesture
-        // Note: Modern browsers require user interaction before creating AudioContext to prevent auto-playing audio.
-        // This is why we use a manual start button instead of auto-starting on page load.
-        startEmulatorBtn.addEventListener('click', function() {
-            // Prevent multiple initialization attempts
-            if (emulator !== null) {
-                return;
-            }
-            
-            // Disable button to prevent multiple clicks
-            startEmulatorBtn.disabled = true;
-            
-            // Hide start button and show status bar
-            startContainer.classList.add('hidden');
-            statusBar.classList.remove('hidden');
-            
-            // Initialize the emulator (this will create AudioContext with valid user gesture)
-            initEmulator();
-        });
+        // Start the emulator
+        initEmulator();
     </script>
 </body>
 </html>
