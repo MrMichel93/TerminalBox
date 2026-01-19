@@ -1721,6 +1721,11 @@ Follow any instructions or hints provided in each challenge directory.`;
         
         // Automatically start the emulator when the page loads
         window.addEventListener('load', function() {
+            // Prevent multiple initialization attempts
+            if (emulator !== null) {
+                return;
+            }
+            
             // Hide start button and show status bar
             startContainer.classList.add('hidden');
             statusBar.classList.remove('hidden');
