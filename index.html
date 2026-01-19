@@ -1169,7 +1169,10 @@ Follow any instructions or hints provided in each challenge directory.`;
                         url: 'https://cdn.jsdelivr.net/gh/copy/v86@master/bios/vgabios.bin'
                     },
                     
-                    // Disk image: Load the CTF disk image
+                    // Disk image: CTF root filesystem image (~10 MB)
+                    // NOTE: `ctf-basic.img` must be present in the same directory as this index.html
+                    // (or the URL below must be updated to a valid absolute/relative path) or the
+                    // emulator will fail to boot because the disk image cannot be loaded.
                     hda: {
                         url: 'ctf-basic.img',
                         async: true
@@ -1702,6 +1705,8 @@ Follow any instructions or hints provided in each challenge directory.`;
         }
 
         // Start emulator button handler - ensures AudioContext is created after user gesture
+        // Note: Modern browsers require user interaction before creating AudioContext to prevent auto-playing audio.
+        // This is why we use a manual start button instead of auto-starting on page load.
         startEmulatorBtn.addEventListener('click', function() {
             // Prevent multiple initialization attempts
             if (emulator !== null) {
@@ -1716,21 +1721,6 @@ Follow any instructions or hints provided in each challenge directory.`;
             statusBar.classList.remove('hidden');
             
             // Initialize the emulator (this will create AudioContext with valid user gesture)
-            initEmulator();
-        });
-        
-        // Automatically start the emulator when the page loads
-        window.addEventListener('load', function() {
-            // Prevent multiple initialization attempts
-            if (emulator !== null) {
-                return;
-            }
-            
-            // Hide start button and show status bar
-            startContainer.classList.add('hidden');
-            statusBar.classList.remove('hidden');
-            
-            // Initialize the emulator automatically
             initEmulator();
         });
     </script>
