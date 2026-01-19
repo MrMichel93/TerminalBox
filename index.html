@@ -1169,10 +1169,10 @@ Follow any instructions or hints provided in each challenge directory.`;
                         url: 'https://cdn.jsdelivr.net/gh/copy/v86@master/bios/vgabios.bin'
                     },
                     
-                    // Kernel image: Buildroot Linux kernel (~68MB, preloaded for parallel download)
-                    // Note: This is the main bottleneck - consider using a smaller kernel if available
-                    bzimage: {
-                        url: 'https://static.simonwillison.net/static/cors-allow/2026/buildroot-bzimage68.bin'
+                    // Disk image: Load the CTF disk image
+                    hda: {
+                        url: 'ctf-basic.img',
+                        async: true
                     },
                     
                     // Performance: Auto-start immediately when resources are ready
@@ -1716,6 +1716,16 @@ Follow any instructions or hints provided in each challenge directory.`;
             statusBar.classList.remove('hidden');
             
             // Initialize the emulator (this will create AudioContext with valid user gesture)
+            initEmulator();
+        });
+        
+        // Automatically start the emulator when the page loads
+        window.addEventListener('load', function() {
+            // Hide start button and show status bar
+            startContainer.classList.add('hidden');
+            statusBar.classList.remove('hidden');
+            
+            // Initialize the emulator automatically
             initEmulator();
         });
     </script>
