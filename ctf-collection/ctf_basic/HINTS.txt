@@ -1,0 +1,21 @@
+=== TERMINAL CTF CHALLENGE ===
+Welcome, hacker! Your mission is to find 5 hidden flags.
+
+USEFUL COMMANDS:
+- ls          : List files in current directory
+- ls -la      : List ALL files (including hidden ones that start with .)
+- cd <dir>    : Change to a directory
+- cd ..       : Go up one directory
+- pwd         : Show current directory path
+- cat <file>  : Display contents of a file
+- grep <text> : Search for text in files
+- find        : Search for files
+
+TIPS:
+- Flags are labeled as: CTF{Flag #1: Description}
+- Some files start with a dot (.) and are hidden
+- Not all files named "flag" contain real flags
+- Use 'grep -r "CTF"' to search recursively
+- Explore deep into directories - some are nested far down
+
+Good luck! Remember: real hackers are persistent!
