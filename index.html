@@ -1169,10 +1169,13 @@ Follow any instructions or hints provided in each challenge directory.`;
                         url: 'https://cdn.jsdelivr.net/gh/copy/v86@master/bios/vgabios.bin'
                     },
                     
-                    // Kernel image: Buildroot Linux kernel (~68MB, preloaded for parallel download)
-                    // Note: This is the main bottleneck - consider using a smaller kernel if available
-                    bzimage: {
-                        url: 'https://static.simonwillison.net/static/cors-allow/2026/buildroot-bzimage68.bin'
+                    // Disk image: CTF root filesystem image (~10 MB)
+                    // NOTE: `ctf-basic.img` must be present in the same directory as this index.html
+                    // (or the URL below must be updated to a valid absolute/relative path) or the
+                    // emulator will fail to boot because the disk image cannot be loaded.
+                    hda: {
+                        url: 'ctf-basic.img',
+                        async: true
                     },
                     
                     // Performance: Auto-start immediately when resources are ready
@@ -1702,6 +1705,8 @@ Follow any instructions or hints provided in each challenge directory.`;
         }
 
         // Start emulator button handler - ensures AudioContext is created after user gesture
+        // Note: Modern browsers require user interaction before creating AudioContext to prevent auto-playing audio.
+        // This is why we use a manual start button instead of auto-starting on page load.
         startEmulatorBtn.addEventListener('click', function() {
             // Prevent multiple initialization attempts
             if (emulator !== null) {
