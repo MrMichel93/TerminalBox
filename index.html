@@ -286,6 +286,8 @@
         <strong>About:</strong> This tool runs a minimal Linux distribution (Buildroot) inside your browser using
         <a href="https://github.com/copy/v86" target="_blank">v86</a>, an x86 emulator written in JavaScript/WebAssembly.
         Boot time is typically 10-30 seconds depending on your connection and device.
+        <br><br>
+        <strong>Note:</strong> This version boots from the Buildroot kernel and mounts ctf-basic.img as a data disk (accessible at /dev/sda).
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js"></script>
@@ -453,8 +455,11 @@
                     vga_bios: {
                         url: 'https://cdn.jsdelivr.net/gh/copy/v86@master/bios/vgabios.bin'
                     },
-                    // Disk image configuration
-                    // The ctf-basic.img file must be in the same directory as this HTML file
+                    // Boot from kernel (like the working version)
+                    bzimage: {
+                        url: 'https://static.simonwillison.net/static/cors-allow/2026/buildroot-bzimage68.bin'
+                    },
+                    // Add custom disk image as a data disk
                     hda: {
                         url: 'ctf-basic.img',
                         async: true
@@ -537,7 +542,7 @@
                         updateStatus('ready', 'Linux is ready');
                         commandInput.disabled = false;
                         runBtn.disabled = false;
-                        setOutput('Linux booted successfully. Enter a command above.\n\n');
+                        setOutput('Linux booted successfully. Enter a command above.\n\nYour custom disk is available at /dev/sda\nTry: fdisk -l /dev/sda\n\n');
                         commandInput.focus();
                     }
                 });
